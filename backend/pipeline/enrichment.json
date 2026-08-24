@@ -1,0 +1,37 @@
+{
+  "_comentario": "Jugadores agregados manualmente que faltan en transfermarkt-datasets. 'clubs' debe usar los nombres visibles exactos de la tabla clubs. image_url opcional (Transfermarkt CDN); si falta, se muestra avatar con inicial.",
+  "players": [
+    {
+      "name": "Santiago Silva",
+      "position": "Attack",
+      "dob": "1980-12-09",
+      "citizenship": "Uruguay",
+      "clubs": [
+        "Newell's Old Boys",
+        "Gimnasia (LP)",
+        "Vélez Sársfield",
+        "Banfield",
+        "Boca Juniors",
+        "Lanús",
+        "Talleres",
+        "Argentinos Juniors",
+        "Aldosivi"
+      ],
+      "image_url": null
+    },
+    {
+      "name": "Cristian Lema",
+      "position": "Defender",
+      "dob": "1990-03-24",
+      "citizenship": "Argentina",
+      "clubs": [
+        "Newell's Old Boys",
+        "Tigre",
+        "Belgrano",
+        "Lanús",
+        "Boca Juniors"
+      ],
+      "image_url": null
+    }
+  ]
+}

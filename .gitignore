@@ -1,0 +1,29 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# --- datos generados por el pipeline (regenerables) ---
+backend/data/
+pipeline/wikidata_history.json
+pipeline/wikidata_images.json
+
+# --- entornos / secretos ---
+.env
+.env.*
+*.local
+
+# --- logs ---
+*.log
+
+# --- sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDEs ---
+.vscode/*
+!.vscode/extensions.json
+.idea/

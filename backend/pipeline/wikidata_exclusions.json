@@ -1,0 +1,4 @@
+{
+  "_comentario": "Exclusiones puntuales de claims P54 erróneos en Wikidata. Clave: QID del jugador. Valor: lista de clubes (nombre visible en DB) cuya relación debe ignorarse.",
+  "Q258115": ["Racing Club"]
+}
