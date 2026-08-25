@@ -1,6 +1,8 @@
 import type { GameMeta } from "../lib/games";
 import { GAMES } from "../lib/games";
 import { GameThumbnail } from "./GameThumbnail";
+import { ConexionesThumbnail } from "./ConexionesThumbnail";
+import { LinkThumbnail } from "./LinkThumbnail";
 
 interface Props {
   onSelect: (gameId: string) => void;
@@ -51,7 +53,15 @@ function GameCard({
       onClick={() => onSelect(game.id)}
       className="group -translate-y-0 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left transition duration-150 hover:-translate-y-0.5 hover:border-sky-400/40 hover:bg-sky-400/[0.06]"
     >
-      <GameThumbnail className="mb-3" />
+      <div className="mb-3">
+        {game.id === "conexiones" ? (
+          <ConexionesThumbnail />
+        ) : game.id === "futbol-link" ? (
+          <LinkThumbnail />
+        ) : (
+          <GameThumbnail />
+        )}
+      </div>
       <div className="flex items-baseline justify-between gap-2 px-1 pb-1">
         <h2 className="text-base font-bold text-white">{game.name}</h2>
         <span className="text-xs font-bold text-sky-300 transition group-hover:text-sky-200">

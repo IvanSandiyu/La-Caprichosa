@@ -162,6 +162,34 @@ def validate_player(conn: sqlite3.Connection, player_id: int, grid: Grid) -> dic
     return {"cells": cells}
 
 
+def reveal_solution(conn: sqlite3.Connection, grid: Grid) -> list[dict]:
+    """Devuelve un jugador válido por cada celda (3×3 = 9 entradas).
+
+    Para cada celda (fila i, columna j) toma un jugador de la
+    intersección de los pools de ambas etiquetas.
+    """
+    results: list[dict] = []
+    for i, row_label in enumerate(grid.rows):
+        for j, col_label in enumerate(grid.cols):
+            pool = _pool_for(conn, row_label) & _pool_for(conn, col_label)
+            pid = next(iter(pool)) if pool else None
+            if pid is None:
+                results.append({"row": i, "col": j, "player_id": 0, "name": "—", "image_url": None})
+                continue
+            r = conn.execute(
+                "SELECT player_id, name, image_url FROM players WHERE player_id = ?",
+                (pid,),
+            ).fetchone()
+            results.append({
+                "row": i,
+                "col": j,
+                "player_id": r[0],
+                "name": r[1],
+                "image_url": r[2],
+            })
+    return results
+
+
 def search_players(query: str, limit: int = 12) -> list[dict]:
     conn = get_conn()
     q = normalize(query)

@@ -55,8 +55,9 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <li>Los intentos fallidos no se penalizan… salvo contra el reloj.</li>
         </ul>
         <p>
-          Elegí tu modo de timer (libre, 90, 60 o 40 segundos) y volvé mañana
-          para mantener tu racha. Tu progreso queda guardado en el navegador.
+          Elegí tu modo de tiempo antes de empezar (Relax, Normal o Difícil) y
+          volvé mañana para mantener tu racha. Tu progreso queda guardado en el
+          navegador.
         </p>
       </div>
     </Modal>
@@ -92,23 +93,32 @@ export function StatsPanel({ stats }: { stats: StatsData }) {
 export function ResultModal({
   won,
   filled,
+  revealed,
   streak,
   onStats,
   onClose,
 }: {
   won: boolean;
   filled: number;
+  revealed: boolean;
   streak: number;
   onStats: () => void;
   onClose: () => void;
 }) {
+  const title = won
+    ? "¡Grilla completa! 🏆"
+    : revealed
+      ? "Respuestas reveladas"
+      : "Se acabó el tiempo";
   return (
-    <Modal title={won ? "¡Grilla completa! 🏆" : "Se acabó el tiempo"} onClose={onClose}>
+    <Modal title={title} onClose={onClose}>
       <div className="space-y-4 text-center">
         <p className="text-sm text-white/80">
           {won
             ? `Completaste las 9 casillas. Racha: ${streak}.`
-            : `Te quedaron ${9 - filled} casillas sin completar.`}
+            : revealed
+              ? `Completaste ${filled} de 9 casillas por tu cuenta.`
+              : `Te quedaron ${9 - filled} casillas sin completar.`}
         </p>
         <button
           onClick={onStats}

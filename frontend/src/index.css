@@ -3,6 +3,7 @@
 @theme {
   --animate-shake: shake 0.4s ease-in-out;
   --animate-pop: pop 0.25s ease-out;
+  --animate-flipCard: flipCard 0.5s ease-in-out;
 
   @keyframes shake {
     0%,
@@ -31,6 +32,45 @@
     to {
       transform: scale(1);
       opacity: 1;
+    }
+  }
+
+  @keyframes eliminate {
+    0% {
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes revealBanner {
+    0% {
+      transform: scale(0.3);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.04);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes flipCard {
+    0% {
+      transform: perspective(600px) rotateY(0deg);
+    }
+    50% {
+      transform: perspective(600px) rotateY(90deg);
+    }
+    100% {
+      transform: perspective(600px) rotateY(0deg);
     }
   }
 }

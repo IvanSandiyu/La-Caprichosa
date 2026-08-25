@@ -1,13 +1,19 @@
 import { useState } from "react";
+import type { Difficulty } from "./lib/api";
+import type { TimeMode } from "./lib/games";
 import { getGame } from "./lib/games";
 import { GameMenu } from "./components/GameMenu";
 import { GameDetail } from "./components/GameDetail";
 import { GridGame } from "./games/grid/GridGame";
+import { ConexionesGame } from "./games/conexiones/ConexionesGame";
+import { LinkGame } from "./games/link/LinkGame";
 
 type View =
   | { name: "menu" }
   | { name: "detail"; gameId: string }
-  | { name: "game"; gameId: string };
+  | { name: "grid"; timeMode: TimeMode }
+  | { name: "conexiones"; difficulty: Difficulty }
+  | { name: "futbol-link"; difficulty: Difficulty };
 
 export default function App() {
   const [view, setView] = useState<View>({ name: "menu" });
@@ -19,7 +25,15 @@ export default function App() {
         <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-4 pb-10">
           <GameDetail
             game={game}
-            onStart={() => setView({ name: "game", gameId: view.gameId })}
+            onStartGrid={(timeMode) =>
+              setView({ name: "grid", timeMode })
+            }
+            onStartConexiones={(difficulty) =>
+              setView({ name: "conexiones", difficulty })
+            }
+            onStartLink={(difficulty) =>
+              setView({ name: "futbol-link", difficulty })
+            }
             onBack={() => setView({ name: "menu" })}
           />
         </div>
@@ -27,10 +41,35 @@ export default function App() {
     }
   }
 
-  if (view.name === "game") {
+  if (view.name === "grid") {
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-4 pb-10">
-        <GridGame onExit={() => setView({ name: "menu" })} />
+        <GridGame
+          timeMode={view.timeMode}
+          onExit={() => setView({ name: "menu" })}
+        />
+      </div>
+    );
+  }
+
+  if (view.name === "conexiones") {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-4 pb-10">
+        <ConexionesGame
+          difficulty={view.difficulty}
+          onExit={() => setView({ name: "menu" })}
+        />
+      </div>
+    );
+  }
+
+  if (view.name === "futbol-link") {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-4 pb-10">
+        <LinkGame
+          difficulty={view.difficulty}
+          onExit={() => setView({ name: "menu" })}
+        />
       </div>
     );
   }

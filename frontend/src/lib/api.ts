@@ -44,6 +44,49 @@ async function toJson<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface RevealCell {
+  row: number;
+  col: number;
+  player_id: number;
+  name: string;
+  image_url: string | null;
+}
+
+/* ── Conexiones ────────────────────────────────────────────── */
+
+export type Difficulty = "facil" | "normal" | "dificil";
+
+export interface PuzzleGroupData {
+  name: string;
+  group_type: string;
+  player_ids: number[];
+  player_names: string[];
+  image_urls: (string | null)[];
+}
+
+export interface PuzzleData {
+  date: string;
+  difficulty: Difficulty;
+  groups: PuzzleGroupData[];
+  player_ids: number[];
+}
+
+/* ── Futbol Link ─────────────────────────────────────────── */
+
+export interface LinkTeammate {
+  id: number;
+  name: string;
+  image_url: string | null;
+  club: string;
+}
+
+export interface LinkPuzzleData {
+  date: string;
+  difficulty: Difficulty;
+  mystery_player: { id: number; name: string; image_url: string | null };
+  teammates: LinkTeammate[];
+}
+
 export const api = {
   getGrid: () => fetch("/api/grid").then((r) => toJson<GridData>(r)),
 
@@ -62,4 +105,13 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_id: playerId }),
     }).then((r) => toJson<GuessResult>(r)),
+
+  reveal: () =>
+    fetch("/api/reveal", { method: "POST" }).then((r) => toJson<RevealCell[]>(r)),
+
+  getPuzzle: (difficulty: string) =>
+    fetch(`/api/puzzles/today?difficulty=${difficulty}`).then((r) => toJson<PuzzleData>(r)),
+
+  getLinkPuzzle: (difficulty: string) =>
+    fetch(`/api/link/today?difficulty=${difficulty}`).then((r) => toJson<LinkPuzzleData>(r)),
 };

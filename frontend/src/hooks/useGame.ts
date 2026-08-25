@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GridData, GuessCell, SearchHit } from "../lib/api";
+import type { TimeMode } from "../lib/games";
 import { api } from "../lib/api";
 import { todayKey } from "../lib/format";
 
-export type TimerMode = "libre" | "90" | "60" | "40";
-
-export const TIMER_MODES: { id: TimerMode; label: string; seconds: number | null }[] = [
-  { id: "libre", label: "Libre", seconds: null },
-  { id: "90", label: "90s", seconds: 90 },
-  { id: "60", label: "60s", seconds: 60 },
-  { id: "40", label: "40s", seconds: 40 },
-];
+export const TIMER_SECONDS: Record<TimeMode, number | null> = {
+  relax: null,
+  normal: 60,
+  dificil: 40,
+};
 
 export interface Placement {
   playerId: number;
@@ -39,6 +37,8 @@ export interface SavedGame {
   won: boolean;
   secondsUsed: number;
   attempts: number;
+  mode?: TimeMode;
+  revealed?: boolean;
 }
 
 // v2: los player_ids cambiaron al regenerar el pool histórico
@@ -59,16 +59,17 @@ function saveStats(s: Stats) {
   localStorage.setItem(STATS_KEY, JSON.stringify(s));
 }
 
-export function useGame(grid: GridData | null) {
+export function useGame(grid: GridData | null, initialMode: TimeMode = "relax") {
   const date = grid?.date ?? todayKey();
 
   const [placements, setPlacements] = useState<(Placement | null)[]>(Array(9).fill(null));
   const [attempts, setAttempts] = useState(0);
   const [finished, setFinished] = useState(false);
   const [won, setWon] = useState(false);
-  const [mode, setMode] = useState<TimerMode>("libre");
+  const [mode, setMode] = useState<TimeMode>(initialMode);
   const [secondsUsed, setSecondsUsed] = useState(0);
   const [running, setRunning] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [stats, setStats] = useState<Stats>(loadStats);
   const [pendingChoice, setPendingChoice] = useState<PendingChoice | null>(null);
   const [feedback, setFeedback] = useState<{ kind: "ok" | "miss" | "info"; text: string } | null>(null);
@@ -89,6 +90,7 @@ export function useGame(grid: GridData | null) {
           setSecondsUsed(saved.secondsUsed ?? 0);
           setFinished(saved.finished ?? false);
           setWon(saved.won ?? false);
+          setRevealed(saved.revealed ?? false);
         }
       }
     } catch {
@@ -99,11 +101,11 @@ export function useGame(grid: GridData | null) {
   // persistir
   useEffect(() => {
     if (!grid || !restored.current) return;
-    const payload: SavedGame = { placements, finished, won, secondsUsed, attempts };
+    const payload: SavedGame = { placements, finished, won, secondsUsed, attempts, mode, revealed };
     localStorage.setItem(GAME_KEY(date), JSON.stringify(payload));
-  }, [grid, date, placements, finished, won, secondsUsed, attempts]);
+  }, [grid, date, placements, finished, won, secondsUsed, attempts, mode, revealed]);
 
-  const timeLimit = TIMER_MODES.find((m) => m.id === mode)?.seconds ?? null;
+  const timeLimit = TIMER_SECONDS[mode];
 
   // cronómetro
   useEffect(() => {
@@ -212,6 +214,21 @@ export function useGame(grid: GridData | null) {
     setFeedback(null);
   }, []);
 
+  const onReveal = useCallback(async () => {
+    if (revealed) return;
+    try {
+      const cells = await api.reveal();
+      const next: (Placement | null)[] = Array(9).fill(null);
+      for (const c of cells) {
+        next[c.row * 3 + c.col] = { playerId: c.player_id, name: c.name, imageUrl: c.image_url };
+      }
+      setPlacements(next);
+      setRevealed(true);
+    } catch {
+      /* silenciar errores de red */
+    }
+  }, [revealed]);
+
   const resetDay = useCallback(() => {
     localStorage.removeItem(GAME_KEY(date));
     setPlacements(Array(9).fill(null));
@@ -219,6 +236,7 @@ export function useGame(grid: GridData | null) {
     setSecondsUsed(0);
     setFinished(false);
     setWon(false);
+    setRevealed(false);
     setRunning(false);
     setPendingChoice(null);
     setFeedback(null);
@@ -232,6 +250,8 @@ export function useGame(grid: GridData | null) {
     attempts,
     finished,
     won,
+    revealed,
+    onReveal,
     mode,
     setMode,
     timeLimit,

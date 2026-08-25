@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GridData, IndexPlayer } from "../../lib/api";
+import type { TimeMode } from "../../lib/games";
 import { api } from "../../lib/api";
 import { prettyDate } from "../../lib/format";
-import { TIMER_MODES, useGame } from "../../hooks/useGame";
+import { useGame } from "../../hooks/useGame";
 import { Board } from "../../components/Board";
 import { GuessBox } from "../../components/GuessBox";
 import {
@@ -21,15 +22,20 @@ function fmtClock(seconds: number): string {
 }
 
 interface Props {
+  timeMode: TimeMode;
   onExit?: () => void;
 }
 
-export function GridGame({ onExit }: Props) {
+export function GridGame({ timeMode, onExit }: Props) {
   const [grid, setGrid] = useState<GridData | null>(null);
   const [playerIndex, setPlayerIndex] = useState<IndexPlayer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [shakeBox, setShakeBox] = useState(false);
   const [modal, setModal] = useState<ModalKind>(null);
+  const [justLost, setJustLost] = useState(false);
+  const [revealLoading, setRevealLoading] = useState(false);
+
+  const prevFinished = useRef(false);
 
   const {
     placements,
@@ -37,8 +43,8 @@ export function GridGame({ onExit }: Props) {
     attempts,
     finished,
     won,
-    mode,
-    setMode,
+    revealed,
+    onReveal,
     timeLimit,
     secondsUsed,
     stats,
@@ -48,7 +54,7 @@ export function GridGame({ onExit }: Props) {
     confirmChoice,
     cancelChoice,
     resetDay,
-  } = useGame(grid);
+  } = useGame(grid, timeMode);
 
   useEffect(() => {
     api
@@ -63,8 +69,29 @@ export function GridGame({ onExit }: Props) {
       .catch(() => setPlayerIndex([]));
   }, []);
 
+  // detectar el instante exacto de derrota para el flash
   useEffect(() => {
-    if (finished) setModal("result");
+    if (finished && !won && !prevFinished.current) {
+      setJustLost(true);
+      const t = setTimeout(() => setJustLost(false), 1800);
+      return () => clearTimeout(t);
+    }
+  }, [finished, won]);
+
+  // si ganó, modal de resultado directo
+  useEffect(() => {
+    if (finished && won) setModal("result");
+  }, [finished, won]);
+
+  const handleReveal = async () => {
+    setRevealLoading(true);
+    await onReveal();
+    setRevealLoading(false);
+    setModal("result");
+  };
+
+  useEffect(() => {
+    prevFinished.current = finished;
   }, [finished]);
 
   const handleSubmit = async (player: {
@@ -89,6 +116,14 @@ export function GridGame({ onExit }: Props) {
 
   return (
     <>
+      {/* flash rojo al perder — estilo eliminación */}
+      {justLost && (
+        <div
+          className="pointer-events-none fixed inset-0 z-50 animate-[eliminate_1.8s_ease-out_forwards]"
+          style={{ backgroundColor: "rgba(239, 68, 68, 0.22)" }}
+        />
+      )}
+
       {/* header */}
       <header className="flex w-full items-center justify-between border-b border-white/5 py-5">
         <div>
@@ -146,25 +181,9 @@ export function GridGame({ onExit }: Props) {
         <>
           {/* HUD */}
           <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
-            {TIMER_MODES.map((m) => (
-              <button
-                key={m.id}
-                disabled={filledCount > 0 || finished}
-                onClick={() => setMode(m.id)}
-                className={[
-                  "rounded-full px-3 py-1 text-xs font-bold transition",
-                  mode === m.id
-                    ? "bg-sky-500 text-slate-950"
-                    : "border border-white/15 text-white/70 hover:bg-white/5",
-                  filledCount > 0 || finished ? "cursor-not-allowed opacity-40" : "",
-                ].join(" ")}
-              >
-                {m.label}
-              </button>
-            ))}
             <span
               className={[
-                "ml-1 rounded-lg px-2 py-0.5 font-mono text-base font-bold tabular-nums",
+                "rounded-lg px-2 py-0.5 font-mono text-base font-bold tabular-nums",
                 urgent
                   ? "bg-red-500/15 text-red-300"
                   : "bg-sky-400/10 text-sky-200",
@@ -175,6 +194,11 @@ export function GridGame({ onExit }: Props) {
             <span className="text-[11px] text-white/40">
               · {filledCount}/9 · {attempts} intentos
             </span>
+            {revealed && (
+              <span className="rounded-lg bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-300">
+                RESPUESTAS REVELADAS
+              </span>
+            )}
           </div>
 
           {/* grilla */}
@@ -226,7 +250,38 @@ export function GridGame({ onExit }: Props) {
               </p>
             )}
 
-            {finished && (
+            {/* derrota: botones revelar + reiniciar */}
+            {finished && !won && (
+              <div className="mt-1 flex items-center gap-3">
+                {!revealed && (
+                  <button
+                    onClick={handleReveal}
+                    disabled={revealLoading}
+                    className="rounded-xl border border-amber-500/40 bg-amber-500/15 px-5 py-2 text-sm font-bold text-amber-200 transition hover:bg-amber-500/25 disabled:opacity-50"
+                  >
+                    {revealLoading ? "Cargando…" : "Revelar respuestas"}
+                  </button>
+                )}
+                {revealed && (
+                  <button
+                    onClick={() => setModal("result")}
+                    className="rounded-xl bg-sky-500 px-5 py-2 text-sm font-bold text-slate-950 transition hover:bg-sky-400"
+                  >
+                    Ver estadísticas
+                  </button>
+                )}
+                <button
+                  onClick={resetDay}
+                  className="rounded-xl border border-white/15 px-4 py-2 text-sm text-white/70 transition hover:bg-white/5"
+                  title="Borra tu progreso de hoy"
+                >
+                  Reiniciar día
+                </button>
+              </div>
+            )}
+
+            {/* victoria */}
+            {finished && won && (
               <div className="mt-1 flex items-center gap-3">
                 <button
                   onClick={() => setModal("stats")}
@@ -266,6 +321,7 @@ export function GridGame({ onExit }: Props) {
         <ResultModal
           won={won}
           filled={filledCount}
+          revealed={revealed}
           streak={stats.streak}
           onStats={() => setModal("stats")}
           onClose={() => setModal(null)}

@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from . import grid as grid_mod
+from . import link as link_mod
+from . import puzzles as puzzles_mod
 from .config import GAME_NAME
 from .db import get_conn
 from .schemas import CellInfo, GuessRequest, GuessResponse, GridLabel, SearchHit
@@ -25,6 +27,8 @@ app.add_middleware(
 )
 
 _grid_cache: dict[str, grid_mod.Grid] = {}
+_puzzle_cache: dict[str, puzzles_mod.Puzzle] = {}
+_link_cache: dict[str, link_mod.LinkPuzzle] = {}
 
 
 def get_grid(game_date: date) -> grid_mod.Grid:
@@ -60,6 +64,14 @@ def guess(req: GuessRequest):
     g = get_grid(date.today())
     result = grid_mod.validate_player(conn, req.player_id, g)
     return GuessResponse(ok=bool(result["cells"]), cells=result["cells"])
+
+
+@app.post("/api/reveal")
+def reveal():
+    """Devuelve un jugador válido por cada celda de la grilla del día."""
+    g = get_grid(date.today())
+    conn = get_conn()
+    return grid_mod.reveal_solution(conn, g)
 
 
 @app.get("/api/search", response_model=list[SearchHit])
@@ -101,3 +113,51 @@ def player_detail(player_id: int):
         citizenship=row[4],
         image_url=row[5],
     )
+
+
+@app.get("/api/puzzles/today")
+def puzzle_today(difficulty: str = "normal"):
+    """Devuelve el puzzle de conexiones del día."""
+    from fastapi import Query
+    key = f"{date.today().isoformat()}-{difficulty}"
+    if key not in _puzzle_cache:
+        _puzzle_cache.clear()
+        p = puzzles_mod.generate_puzzle(date.today(), difficulty)
+        if p is None:
+            raise HTTPException(status_code=500, detail="No se pudo generar puzzle")
+        _puzzle_cache[key] = p
+    p = _puzzle_cache[key]
+    return {
+        "date": p.game_date.isoformat(),
+        "difficulty": p.difficulty,
+        "groups": [
+            {
+                "name": g.name,
+                "group_type": g.group_type,
+                "player_ids": g.player_ids,
+                "player_names": g.player_names,
+                "image_urls": g.image_urls,
+            }
+            for g in p.groups
+        ],
+        "player_ids": p.player_ids,
+    }
+
+
+@app.get("/api/link/today")
+def link_today(difficulty: str = "normal"):
+    """Devuelve el puzzle de Futbol Link del día."""
+    key = f"{date.today().isoformat()}-{difficulty}"
+    if key not in _link_cache:
+        _link_cache.clear()
+        p = link_mod.generate_link_puzzle(date.today(), difficulty)
+        if p is None:
+            raise HTTPException(status_code=500, detail="No se pudo generar puzzle link")
+        _link_cache[key] = p
+    p = _link_cache[key]
+    return {
+        "date": p.game_date.isoformat(),
+        "difficulty": p.difficulty,
+        "mystery_player": p.mystery_player,
+        "teammates": p.teammates,
+    }
