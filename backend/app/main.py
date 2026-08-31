@@ -1,4 +1,5 @@
 from datetime import date
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -16,13 +17,18 @@ from .schemas import CellInfo, GuessRequest, GuessResponse, GridLabel, SearchHit
 app = FastAPI(title=GAME_NAME)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
+# API pública y de solo lectura (sin auth): permitimos cualquier origen.
+# Si querés acotar, seteá CORS_ORIGINS="https://x.vercel.app,https://y.com".
+_cors_raw = os.environ.get("CORS_ORIGINS", "*")
+_cors_origins = (
+    ["*"]
+    if _cors_raw.strip() == "*"
+    else [o.strip() for o in _cors_raw.split(",") if o.strip()]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
-    ],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

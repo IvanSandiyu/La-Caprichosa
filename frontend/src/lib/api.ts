@@ -104,34 +104,42 @@ export interface ImpostorPuzzleData {
   players: ImpostorPlayer[];
 }
 
+/** URL base del backend. En dev queda vacío → usa el proxy local /api de Vite.
+ *  En producción se setea VITE_API_URL a la URL del backend hosteado. */
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+
+function url(path: string): string {
+  return `${API_BASE}/api/${path}`;
+}
+
 export const api = {
-  getGrid: () => fetch("/api/grid").then((r) => toJson<GridData>(r)),
+  getGrid: () => fetch(url("grid")).then((r) => toJson<GridData>(r)),
 
   getPlayerIndex: () =>
-    fetch("/api/players/index").then((r) => toJson<IndexPlayer[]>(r)),
+    fetch(url("players/index")).then((r) => toJson<IndexPlayer[]>(r)),
 
   getPlayer: (playerId: number) =>
-    fetch(`/api/player/${playerId}`).then((r) => toJson<SearchHit>(r)),
+    fetch(url(`player/${playerId}`)).then((r) => toJson<SearchHit>(r)),
 
   search: (q: string) =>
-    fetch(`/api/search?q=${encodeURIComponent(q)}`).then((r) => toJson<SearchHit[]>(r)),
+    fetch(url(`search?q=${encodeURIComponent(q)}`)).then((r) => toJson<SearchHit[]>(r)),
 
   guess: (playerId: number) =>
-    fetch("/api/guess", {
+    fetch(url("guess"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_id: playerId }),
     }).then((r) => toJson<GuessResult>(r)),
 
   reveal: () =>
-    fetch("/api/reveal", { method: "POST" }).then((r) => toJson<RevealCell[]>(r)),
+    fetch(url("reveal"), { method: "POST" }).then((r) => toJson<RevealCell[]>(r)),
 
   getPuzzle: (difficulty: string) =>
-    fetch(`/api/puzzles/today?difficulty=${difficulty}`).then((r) => toJson<PuzzleData>(r)),
+    fetch(url(`puzzles/today?difficulty=${difficulty}`)).then((r) => toJson<PuzzleData>(r)),
 
   getLinkPuzzle: (difficulty: string) =>
-    fetch(`/api/link/today?difficulty=${difficulty}`).then((r) => toJson<LinkPuzzleData>(r)),
+    fetch(url(`link/today?difficulty=${difficulty}`)).then((r) => toJson<LinkPuzzleData>(r)),
 
   getImpostor: (difficulty: string) =>
-    fetch(`/api/impostor/today?difficulty=${difficulty}`).then((r) => toJson<ImpostorPuzzleData>(r)),
+    fetch(url(`impostor/today?difficulty=${difficulty}`)).then((r) => toJson<ImpostorPuzzleData>(r)),
 };
