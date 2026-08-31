@@ -5,7 +5,7 @@ import { normalize } from "../../lib/format";
 
 interface Props {
   onSelect: (player: SearchHit) => void;
-  onEnter?: (player: IndexPlayer) => void;
+  onEnter?: (player: SearchHit) => void;
   placeholder?: string;
 }
 
@@ -62,9 +62,18 @@ export const SimpleSearch = forwardRef<SimpleSearchHandle, Props>(
     }, []);
 
     const select = (p: IndexPlayer) => {
-      onSelect({ player_id: p.id, name: p.name, position: p.position, dob: null, citizenship: p.citizenship, image_url: null });
+      const hit: SearchHit = {
+        player_id: p.id,
+        name: p.name,
+        position: p.position,
+        dob: null,
+        citizenship: p.citizenship,
+        image_url: null,
+      };
+      onSelect(hit);
       setQuery(p.name);
       setOpen(false);
+      return hit;
     };
 
     return (
@@ -80,8 +89,8 @@ export const SimpleSearch = forwardRef<SimpleSearchHandle, Props>(
             if (e.key === "Enter" && results[highlight]) {
               e.preventDefault();
               const p = results[highlight];
-              select(p);
-              onEnter?.(p);
+              const hit = select(p);
+              onEnter?.(hit);
             }
           }}
           placeholder={placeholder ?? "Buscar jugador..."}
