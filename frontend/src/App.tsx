@@ -1,19 +1,21 @@
 import { useState } from "react";
 import type { Difficulty } from "./lib/api";
-import type { TimeMode } from "./lib/games";
+import type { TimeMode, ImpostorMode } from "./lib/games";
 import { getGame } from "./lib/games";
 import { GameMenu } from "./components/GameMenu";
 import { GameDetail } from "./components/GameDetail";
 import { GridGame } from "./games/grid/GridGame";
 import { ConexionesGame } from "./games/conexiones/ConexionesGame";
 import { LinkGame } from "./games/link/LinkGame";
+import { ImpostorGame } from "./games/impostor/ImpostorGame";
 
 type View =
   | { name: "menu" }
   | { name: "detail"; gameId: string }
   | { name: "grid"; timeMode: TimeMode }
   | { name: "conexiones"; difficulty: Difficulty }
-  | { name: "futbol-link"; difficulty: Difficulty };
+  | { name: "futbol-link"; difficulty: Difficulty }
+  | { name: "impostor"; difficulty: Difficulty; mode: ImpostorMode };
 
 export default function App() {
   const [view, setView] = useState<View>({ name: "menu" });
@@ -33,6 +35,9 @@ export default function App() {
             }
             onStartLink={(difficulty) =>
               setView({ name: "futbol-link", difficulty })
+            }
+            onStartImpostor={(difficulty, mode) =>
+              setView({ name: "impostor", difficulty, mode })
             }
             onBack={() => setView({ name: "menu" })}
           />
@@ -68,6 +73,18 @@ export default function App() {
       <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-4 pb-10">
         <LinkGame
           difficulty={view.difficulty}
+          onExit={() => setView({ name: "menu" })}
+        />
+      </div>
+    );
+  }
+
+  if (view.name === "impostor") {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-4 pb-10">
+        <ImpostorGame
+          difficulty={view.difficulty}
+          mode={view.mode}
           onExit={() => setView({ name: "menu" })}
         />
       </div>

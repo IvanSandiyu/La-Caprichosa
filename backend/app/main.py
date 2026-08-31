@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from . import grid as grid_mod
+from . import impostor as impostor_mod
 from . import link as link_mod
 from . import puzzles as puzzles_mod
 from .config import GAME_NAME
@@ -29,6 +30,7 @@ app.add_middleware(
 _grid_cache: dict[str, grid_mod.Grid] = {}
 _puzzle_cache: dict[str, puzzles_mod.Puzzle] = {}
 _link_cache: dict[str, link_mod.LinkPuzzle] = {}
+_impostor_cache: dict[str, impostor_mod.ImpostorPuzzle] = {}
 
 
 def get_grid(game_date: date) -> grid_mod.Grid:
@@ -127,6 +129,19 @@ def puzzle_today(difficulty: str = "normal"):
             raise HTTPException(status_code=500, detail="No se pudo generar puzzle")
         _puzzle_cache[key] = p
     p = _puzzle_cache[key]
+    # validate all players have images
+    for g in p.groups:
+        for url in g.image_urls:
+            if not url:
+                _puzzle_cache.clear()
+                p = puzzles_mod.generate_puzzle(date.today(), difficulty)
+                if p is None:
+                    raise HTTPException(status_code=500, detail="No se pudo generar puzzle sin imágenes")
+                _puzzle_cache[key] = p
+                break
+        else:
+            continue
+        break
     return {
         "date": p.game_date.isoformat(),
         "difficulty": p.difficulty,
@@ -160,4 +175,32 @@ def link_today(difficulty: str = "normal"):
         "difficulty": p.difficulty,
         "mystery_player": p.mystery_player,
         "teammates": p.teammates,
+    }
+
+
+@app.get("/api/impostor/today")
+def impostor_today(difficulty: str = "normal"):
+    """Devuelve el puzzle de Impostor del día."""
+    key = f"{date.today().isoformat()}-{difficulty}"
+    if key not in _impostor_cache:
+        _impostor_cache.clear()
+        p = impostor_mod.generate_impostor_puzzle(date.today(), difficulty)
+        if p is None:
+            raise HTTPException(status_code=500, detail="No se pudo generar puzzle impostor")
+        _impostor_cache[key] = p
+    p = _impostor_cache[key]
+    return {
+        "date": p.game_date.isoformat(),
+        "difficulty": p.difficulty,
+        "category": p.category,
+        "category_type": p.category_type,
+        "players": [
+            {
+                "id": pl.id,
+                "name": pl.name,
+                "image_url": pl.image_url,
+                "is_impostor": pl.is_impostor,
+            }
+            for pl in p.players
+        ],
     }

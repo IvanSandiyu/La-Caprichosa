@@ -3,6 +3,7 @@ import { GAMES } from "../lib/games";
 import { GameThumbnail } from "./GameThumbnail";
 import { ConexionesThumbnail } from "./ConexionesThumbnail";
 import { LinkThumbnail } from "./LinkThumbnail";
+import { ImpostorThumbnail } from "./ImpostorThumbnail";
 
 interface Props {
   onSelect: (gameId: string) => void;
@@ -58,6 +59,8 @@ function GameCard({
           <ConexionesThumbnail />
         ) : game.id === "futbol-link" ? (
           <LinkThumbnail />
+        ) : game.id === "impostor" ? (
+          <ImpostorThumbnail />
         ) : (
           <GameThumbnail />
         )}

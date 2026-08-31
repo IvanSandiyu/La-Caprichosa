@@ -87,6 +87,23 @@ export interface LinkPuzzleData {
   teammates: LinkTeammate[];
 }
 
+/* ── Impostor ──────────────────────────────────────────── */
+
+export interface ImpostorPlayer {
+  id: number;
+  name: string;
+  image_url: string | null;
+  is_impostor: boolean;
+}
+
+export interface ImpostorPuzzleData {
+  date: string;
+  difficulty: Difficulty;
+  category: string;
+  category_type: string;
+  players: ImpostorPlayer[];
+}
+
 export const api = {
   getGrid: () => fetch("/api/grid").then((r) => toJson<GridData>(r)),
 
@@ -114,4 +131,7 @@ export const api = {
 
   getLinkPuzzle: (difficulty: string) =>
     fetch(`/api/link/today?difficulty=${difficulty}`).then((r) => toJson<LinkPuzzleData>(r)),
+
+  getImpostor: (difficulty: string) =>
+    fetch(`/api/impostor/today?difficulty=${difficulty}`).then((r) => toJson<ImpostorPuzzleData>(r)),
 };

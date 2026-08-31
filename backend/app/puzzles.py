@@ -51,6 +51,7 @@ def _club_players(conn: sqlite3.Connection, club_id: int, exclude: set[int]) -> 
         JOIN players p ON p.player_id = pc.player_id
         WHERE pc.club_id = ? AND p.player_id NOT IN ({ids})
           AND p.image_url IS NOT NULL AND p.image_url != ''
+          AND p.image_url NOT LIKE '%default.jpg%'
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
         (club_id, *exclude),
@@ -66,6 +67,7 @@ def _nationality_players(conn: sqlite3.Connection, country: str, exclude: set[in
         JOIN players p ON p.player_id = pc.player_id
         WHERE pc.country = ? AND p.player_id NOT IN ({ids})
           AND p.image_url IS NOT NULL AND p.image_url != ''
+          AND p.image_url NOT LIKE '%default.jpg%'
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
         (country, *exclude),
@@ -80,6 +82,7 @@ def _position_players(conn: sqlite3.Connection, position: str, exclude: set[int]
         FROM players
         WHERE position = ? AND player_id NOT IN ({ids})
           AND image_url IS NOT NULL AND image_url != ''
+          AND image_url NOT LIKE '%default.jpg%'
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
         (position, *exclude),
@@ -102,6 +105,7 @@ def _last_name_players(conn: sqlite3.Connection, last: str, exclude: set[int]) -
         WHERE name LIKE '%' || ? || '%'
           AND player_id NOT IN ({ids})
           AND image_url IS NOT NULL AND image_url != ''
+          AND image_url NOT LIKE '%default.jpg%'
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
         (last, *exclude),
@@ -117,6 +121,7 @@ def _first_name_players(conn: sqlite3.Connection, first: str, exclude: set[int])
         WHERE name LIKE ? || '%'
           AND player_id NOT IN ({ids})
           AND image_url IS NOT NULL AND image_url != ''
+          AND image_url NOT LIKE '%default.jpg%'
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
         (first, *exclude),
@@ -140,6 +145,9 @@ def _available_clubs(conn: sqlite3.Connection) -> list[dict]:
             """
             SELECT c.club_id, c.name, COUNT(DISTINCT pc.player_id) AS n
             FROM clubs c JOIN player_clubs pc ON pc.club_id = c.club_id
+            JOIN players p ON p.player_id = pc.player_id
+            WHERE p.image_url IS NOT NULL AND p.image_url != ''
+              AND p.image_url NOT LIKE '%default.jpg%'
             GROUP BY c.club_id HAVING n >= ?
             """,
             (MIN_POOL_PER_LABEL,),
@@ -152,9 +160,12 @@ def _available_nationalities(conn: sqlite3.Connection) -> list[dict]:
         {"type": "nationality", "label": r["country"]}
         for r in conn.execute(
             """
-            SELECT country, COUNT(DISTINCT player_id) AS n
-            FROM player_countries
-            GROUP BY country HAVING n >= ?
+            SELECT pc.country, COUNT(DISTINCT pc.player_id) AS n
+            FROM player_countries pc
+            JOIN players p ON p.player_id = pc.player_id
+            WHERE p.image_url IS NOT NULL AND p.image_url != ''
+              AND p.image_url NOT LIKE '%default.jpg%'
+            GROUP BY pc.country HAVING n >= ?
             """,
             (MIN_POOL_PER_LABEL,),
         ).fetchall()
@@ -168,6 +179,8 @@ def _available_positions(conn: sqlite3.Connection) -> list[dict]:
             """
             SELECT position, COUNT(*) AS n
             FROM players WHERE position IS NOT NULL
+              AND image_url IS NOT NULL AND image_url != ''
+              AND image_url NOT LIKE '%default.jpg%'
             GROUP BY position HAVING n >= ?
             """,
             (MIN_POOL_PER_LABEL,),
@@ -179,6 +192,8 @@ def _available_last_names(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
         """
         SELECT name, COUNT(*) AS n FROM players
+        WHERE image_url IS NOT NULL AND image_url != ''
+          AND image_url NOT LIKE '%default.jpg%'
         GROUP BY name HAVING n >= ? AND n <= 12
         """,
         (GROUP_SIZE,),
@@ -195,6 +210,8 @@ def _available_first_names(conn: sqlite3.Connection) -> list[dict]:
         SELECT SUBSTR(name, 1, INSTR(name || ' ', ' ') - 1) AS first,
                COUNT(*) AS n
         FROM players
+        WHERE image_url IS NOT NULL AND image_url != ''
+          AND image_url NOT LIKE '%default.jpg%'
         GROUP BY first HAVING n >= ? AND n <= 15
         """,
         (GROUP_SIZE,),

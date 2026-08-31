@@ -39,6 +39,18 @@ export const GAMES: GameMeta[] = [
       "Si acertás, ganás. Si no, perdés un intento. " +
       "Después de los cinco, tenés una última oportunidad. ¿Podés encontrarlo?",
   },
+  {
+    id: "impostor",
+    name: "El Impostor",
+    tagline: "Encontrá al que no pertenece",
+    description:
+      "Te damos una categoría: jugaron todos en el mismo club, en la misma selección, " +
+      "nacieron el mismo año, o comparten algo en común. " +
+      "En el tablero hay jugadores correctos y algunos impostores que no cumplen la categoría. " +
+      "Seleccioná a todos los correctos sin tocar a ningún impostor. " +
+      "En modo Normal elegís todos de una; en Uno a uno, de a uno: " +
+      "un solo impostor y se terminó. Una categoría nueva cada día.",
+  },
 ];
 
 export function getGame(id: string): GameMeta | undefined {
@@ -63,4 +75,12 @@ export const DIFFICULTY_OPTIONS: { id: Difficulty; label: string; hint: string }
   { id: "facil", label: "Fácil", hint: "Conexiones más obvias" },
   { id: "normal", label: "Normal", hint: "4 errores permitidos" },
   { id: "dificil", label: "Difícil", hint: "3 errores permitidos" },
+];
+
+/** Modos de juego para Impostor. */
+export type ImpostorMode = "normal" | "uno-a-uno";
+
+export const IMPOSTOR_MODE_OPTIONS: { id: ImpostorMode; label: string; hint: string }[] = [
+  { id: "normal", label: "Normal", hint: "Seleccioná todos los correctos de una" },
+  { id: "uno-a-uno", label: "Uno a uno", hint: "Un impostor y perdés" },
 ];
