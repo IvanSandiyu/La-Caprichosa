@@ -5,6 +5,7 @@ import { normalize } from "../../lib/format";
 
 interface Props {
   onSelect: (player: SearchHit) => void;
+  onEnter?: (player: IndexPlayer) => void;
   placeholder?: string;
 }
 
@@ -21,7 +22,7 @@ function scoreHit(normName: string, q: string): number | null {
 }
 
 export const SimpleSearch = forwardRef<SimpleSearchHandle, Props>(
-  function SimpleSearch({ onSelect, placeholder }, ref) {
+  function SimpleSearch({ onSelect, onEnter, placeholder }, ref) {
     const [query, setQuery] = useState("");
     const [highlight, setHighlight] = useState(0);
     const [open, setOpen] = useState(false);
@@ -76,7 +77,12 @@ export const SimpleSearch = forwardRef<SimpleSearchHandle, Props>(
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => Math.min(h + 1, results.length - 1)); }
             if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
-            if (e.key === "Enter" && results[highlight]) { e.preventDefault(); select(results[highlight]); }
+            if (e.key === "Enter" && results[highlight]) {
+              e.preventDefault();
+              const p = results[highlight];
+              select(p);
+              onEnter?.(p);
+            }
           }}
           placeholder={placeholder ?? "Buscar jugador..."}
           className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-sky-400/60 focus:outline-none"

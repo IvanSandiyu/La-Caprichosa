@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PuzzleData, PuzzleGroupData, Difficulty } from "../../lib/api";
 import { api } from "../../lib/api";
 import { prettyDate } from "../../lib/format";
+import { GameFooter } from "../../components/GameFooter";
 
 const MAX_MISTAKES: Record<Difficulty, number | null> = {
   facil: null,
@@ -307,6 +308,8 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
         <footer className="pt-6 text-center text-[11px] leading-relaxed text-white/30">
           Hecho con cariño para hinchas del fútbol argentino ⚽🇦🇷
         </footer>
+
+        <GameFooter />
       </>
     );
   }
@@ -444,6 +447,8 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
       <footer className="pt-6 text-center text-[11px] leading-relaxed text-white/30">
         Hecho con cariño para hinchas del fútbol argentino ⚽🇦🇷
       </footer>
+
+      <GameFooter />
     </>
   );
 }

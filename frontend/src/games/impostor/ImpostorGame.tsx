@@ -4,6 +4,7 @@ import { api } from "../../lib/api";
 import { todayKey } from "../../lib/format";
 import type { ImpostorMode } from "../../lib/games";
 import { Silhouette } from "../../components/Silhouette";
+import { GameFooter } from "../../components/GameFooter";
 
 interface Props {
   difficulty: Difficulty;
@@ -318,6 +319,8 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
           Volver al menú
         </button>
       )}
+
+      <GameFooter />
     </div>
   );
 }

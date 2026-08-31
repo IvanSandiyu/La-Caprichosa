@@ -78,6 +78,8 @@ export interface LinkTeammate {
   name: string;
   image_url: string | null;
   club: string;
+  years?: string | null;
+  clubs?: string[];
 }
 
 export interface LinkPuzzleData {

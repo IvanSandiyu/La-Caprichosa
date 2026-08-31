@@ -4,6 +4,7 @@ import { api } from "../../lib/api";
 import { todayKey } from "../../lib/format";
 import { SimpleSearch } from "./SimpleSearch";
 import { Silhouette } from "../../components/Silhouette";
+import { GameFooter } from "../../components/GameFooter";
 
 interface Props {
   difficulty: Difficulty;
@@ -45,11 +46,17 @@ function TeammateCard({
   revealed,
   imageUrl,
   name,
+  years,
+  clubs,
+  showHints,
   animate,
 }: {
   revealed: boolean;
   imageUrl: string | null;
   name: string;
+  years?: string | null;
+  clubs?: string[];
+  showHints: boolean;
   animate: boolean;
 }) {
   const [flipping, setFlipping] = useState(false);
@@ -71,6 +78,8 @@ function TeammateCard({
       </div>
     );
   }
+
+  const hasHints = showHints && (years != null || (clubs && clubs.length > 0));
 
   return (
     <div className="flex w-full flex-col items-center gap-1">
@@ -98,6 +107,18 @@ function TeammateCard({
       <span className="block w-full truncate text-center text-[8px] font-bold leading-tight text-white/80">
         {name}
       </span>
+      {hasHints && (
+        <div className="flex w-full flex-col gap-0.5 text-center">
+          {years && (
+            <span className="block w-full text-[8px] font-bold leading-tight text-sky-300/80">{years}</span>
+          )}
+          {clubs && clubs.length > 0 && (
+            <span className="block w-full truncate text-[7px] font-medium leading-tight text-white/50">
+              {clubs.join(", ")}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -114,6 +135,7 @@ export function LinkGame({ difficulty, onExit }: Props) {
   const [gameOver, setGameOver] = useState(false);
   const [won, setWon] = useState(false);
   const [justLost, setJustLost] = useState(false);
+  const [showHints, setShowHints] = useState(false);
   const searchRef = useRef<{ clear: () => void } | null>(null);
 
   const saved = useMemo(() => loadSaved(difficulty), [difficulty]);
@@ -137,10 +159,11 @@ export function LinkGame({ difficulty, onExit }: Props) {
   const allRevealed = revealedCount >= TOTAL_TEAMMATES;
   const isLastChance = allRevealed && !gameOver;
 
-  const handleGuess = useCallback(() => {
-    if (!puzzle || !selectedPlayer || gameOver) return;
+  const handleGuess = useCallback((player?: SearchHit) => {
+    const target = player ?? selectedPlayer;
+    if (!puzzle || !target || gameOver) return;
 
-    const correct = selectedPlayer.player_id === puzzle.mystery_player.id;
+    const correct = target.player_id === puzzle.mystery_player.id;
     // clear search
     searchRef.current?.clear();
     setSelectedPlayer(null);
@@ -169,6 +192,12 @@ export function LinkGame({ difficulty, onExit }: Props) {
       }
     }
   }, [puzzle, selectedPlayer, gameOver, attempts, difficulty, allRevealed]);
+
+  const handleSkip = useCallback(() => {
+    if (gameOver || allRevealed) return;
+    setRevealedCount((n) => Math.min(n + 1, TOTAL_TEAMMATES));
+    setFeedback({ kind: "fail", text: "Saltaste. Mirá el siguiente compañero" });
+  }, [gameOver, allRevealed]);
 
   if (error) {
     return (
@@ -233,20 +262,38 @@ export function LinkGame({ difficulty, onExit }: Props) {
       </p>
 
       {/* teammates */}
-      <div className="grid w-full max-w-md grid-cols-5 gap-2">
-        {Array.from({ length: 5 }).map((_, i) => {
-          const t = teammates[i];
-          if (!t) return <div key={i} className="aspect-[3/4] rounded-xl bg-white/[0.04]" />;
-          return (
-            <TeammateCard
-              key={i}
-              revealed={i < revealedCount || gameOver}
-              imageUrl={t.image_url}
-              name={t.name}
-              animate={!gameOver}
-            />
-          );
-        })}
+      <div className="flex w-full max-w-md flex-col gap-1.5">
+        {!gameOver && !isLastChance && (
+          <button
+            onClick={() => setShowHints((s) => !s)}
+            className={[
+              "self-end rounded-lg px-3 py-1.5 text-[11px] font-bold transition",
+              showHints
+                ? "bg-sky-500/30 text-sky-200"
+                : "bg-white/10 text-white/60 hover:bg-white/15",
+            ].join(" ")}
+          >
+            {showHints ? "Ocultar pistas" : "Ayuda"}
+          </button>
+        )}
+        <div className="grid w-full max-w-md grid-cols-5 gap-2">
+          {Array.from({ length: 5 }).map((_, i) => {
+            const t = teammates[i];
+            if (!t) return <div key={i} className="aspect-[3/4] rounded-xl bg-white/[0.04]" />;
+            return (
+              <TeammateCard
+                key={i}
+                revealed={i < revealedCount || gameOver}
+                imageUrl={t.image_url}
+                name={t.name}
+                years={t.years}
+                clubs={t.clubs}
+                showHints={showHints}
+                animate={!gameOver}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* conexiones after game over */}
@@ -282,15 +329,26 @@ export function LinkGame({ difficulty, onExit }: Props) {
           <SimpleSearch
             ref={searchRef}
             onSelect={(p) => setSelectedPlayer(p)}
+            onEnter={(p) => handleGuess(p)}
             placeholder="Escribí el nombre del jugador..."
           />
-          <button
-            onClick={handleGuess}
-            disabled={!selectedPlayer}
-            className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-black uppercase text-slate-950 transition hover:bg-sky-400 disabled:opacity-30"
-          >
-            {isLastChance ? "Último intento" : "Adivinar"}
-          </button>
+          <div className="flex w-full gap-2">
+            {!allRevealed && (
+              <button
+                onClick={handleSkip}
+                className="rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-white/70 transition hover:bg-white/15"
+              >
+                Saltar
+              </button>
+            )}
+            <button
+              onClick={() => handleGuess()}
+              disabled={!selectedPlayer}
+              className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-black uppercase text-slate-950 transition hover:bg-sky-400 disabled:opacity-30"
+            >
+              {isLastChance ? "Último intento" : "Adivinar"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -299,6 +357,8 @@ export function LinkGame({ difficulty, onExit }: Props) {
           Volver al menú
         </button>
       )}
+
+      <GameFooter />
     </div>
   );
 }

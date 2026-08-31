@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: la-caprichosa-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install --only-binary :all: -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/grid
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.3
+      - key: CORS_ORIGINS
+        value: "*"

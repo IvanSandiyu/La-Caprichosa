@@ -6,6 +6,7 @@ import { prettyDate } from "../../lib/format";
 import { useGame } from "../../hooks/useGame";
 import { Board } from "../../components/Board";
 import { GuessBox } from "../../components/GuessBox";
+import { GameFooter } from "../../components/GameFooter";
 import {
   HowToPlay,
   ResultModal,
@@ -305,6 +306,8 @@ export function GridGame({ timeMode, onExit }: Props) {
             <br />
             Hecho con cariño para hinchas del fútbol argentino ⚽🇦🇷
           </footer>
+
+          <GameFooter />
         </>
       )}
 

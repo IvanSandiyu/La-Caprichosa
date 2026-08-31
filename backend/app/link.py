@@ -48,18 +48,45 @@ class LinkPuzzle:
     teammates: list[dict] = field(default_factory=list)
 
 
+def _career_range(conn: sqlite3.Connection, player_id: int) -> tuple[int, int] | None:
+    """Estimación confiable del rango activo [inicio, fin].
+
+    Devuelve None cuando NO podemos confiar en la fecha de nacimiento para
+    ubicar la carrera del jugador (sin DOB, o el DOB es el marcador de
+    "fecha desconocida" 2000-01-01). En esos casos no puede garantizarse
+    que haya coincidido con otro jugador, así que se trata como "era
+    desconocida".
+    """
+    row = conn.execute("SELECT dob FROM players WHERE player_id=?", (player_id,)).fetchone()
+    if not row or not row[0]:
+        return None
+    dob = row[0].strip()
+    if not dob or dob.startswith("2000-01-01"):
+        return None
+    try:
+        y = int(dob[:4])
+    except (ValueError, IndexError):
+        return None
+    return (y + 18, y + 37)
+
+
 def _clubmates(
     conn: sqlite3.Connection,
     player_id: int,
     cur_year: int,
     gap: int,
 ) -> list[dict]:
-    """Find players who share a club AND whose careers could overlap.
+    """Find players who share a club AND whose careers overlap.
 
-    We estimate each player's active years as [dob+18, dob+37].
-    Two players overlap if their ranges intersect.
-    Players without DOB are included (fallback: assume possible overlap).
+    We estimate each player's active years as [dob+18, dob+37]. Two players
+    overlap if their ranges intersect. Players whose career era cannot be
+    reliably determined (missing or placeholder DOB) are EXCLUDED, because we
+    can't guarantee they coincided with the mystery player.
     """
+    m_range = _career_range(conn, player_id)
+    if m_range is None:
+        return []
+    m_start, m_end = m_range
     window_sql, window_params = _debut_window_sql("p", cur_year, gap)
     rows = conn.execute(
         f"""
@@ -81,22 +108,38 @@ def _clubmates(
 
     result = []
     for r in rows:
-        p_dob, m_dob = r[4], r[5]
-        # if both have DOB, check career overlap
-        if p_dob and m_dob:
-            try:
-                p_year = int(p_dob[:4])
-                m_year = int(m_dob[:4])
-                # estimated active range: age 18–37
-                p_start, p_end = p_year + 18, p_year + 37
-                m_start, m_end = m_year + 18, m_year + 37
-                if p_end < m_start or m_end < p_start:
-                    continue  # no overlap → skip
-            except (ValueError, IndexError):
-                pass  # bad DOB format → include anyway
+        p_range = _career_range(conn, r[0])
+        if p_range is None:
+            continue  # era incierta → no podemos garantizar la coincidencia
+        p_start, p_end = p_range
+        if p_end < m_start or m_end < p_start:
+            continue  # no overlap → skip
         result.append({"id": r[0], "name": r[1], "image_url": r[2], "club": r[3]})
 
     return result
+
+
+def _player_hints(conn: sqlite3.Connection, player_id: int) -> dict:
+    """Pistas para un jugador: años activos estimados y lista de clubes."""
+    years: str | None = None
+    rng = _career_range(conn, player_id)
+    if rng:
+        start, end = rng
+        today_year = date.today().year
+        if end > today_year:
+            end = today_year
+        if start <= end:
+            years = f"{start}-{end}"
+    clubs = [
+        r[0]
+        for r in conn.execute(
+            "SELECT c.name FROM player_clubs pc JOIN clubs c ON c.club_id = pc.club_id "
+            "WHERE pc.player_id = ? ORDER BY c.name",
+            (player_id,),
+        ).fetchall()
+        if r[0]
+    ]
+    return {"years": years, "clubs": clubs}
 
 
 def _mystery_candidates(
@@ -119,9 +162,10 @@ def _mystery_candidates(
           AND p2.image_url NOT LIKE '%default.jpg%'
         WHERE p.image_url IS NOT NULL AND p.image_url != ''
           AND p.image_url NOT LIKE '%default.jpg%'
+          AND p.dob IS NOT NULL AND p.dob != '' AND p.dob NOT LIKE '2000-01-01%'
           {('AND ' + window_sql) if window_sql else ''}
           AND (
-            p.dob IS NULL OR p2.dob IS NULL
+            p2.dob IS NULL
             OR ABS(CAST(strftime('%Y', p.dob) AS INT) - CAST(strftime('%Y', p2.dob) AS INT)) <= 19
           )
         GROUP BY p.player_id
@@ -187,7 +231,14 @@ def _generate(
                 "image_url": mystery["image_url"],
             },
             teammates=[
-                {"id": cm["id"], "name": cm["name"], "image_url": cm["image_url"], "club": cm["club"]}
+                {
+                    "id": cm["id"],
+                    "name": cm["name"],
+                    "image_url": cm["image_url"],
+                    "club": cm["club"],
+                    "years": _player_hints(conn, cm["id"])["years"],
+                    "clubs": _player_hints(conn, cm["id"])["clubs"],
+                }
                 for cm in chosen[:TEAMMATES_COUNT]
             ],
         )
