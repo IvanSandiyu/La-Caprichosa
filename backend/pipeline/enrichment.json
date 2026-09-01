@@ -32,6 +32,31 @@
         "Boca Juniors"
       ],
       "image_url": null
+    },
+    {
+      "name": "Sebastián Sosa",
+      "position": "Goalkeeper",
+      "dob": "1986-08-19",
+      "citizenship": "Uruguay",
+      "last_season": 2025,
+      "clubs": [
+        "Boca Juniors",
+        "Vélez Sársfield",
+        "Rosario Central",
+        "Independiente"
+      ],
+      "image_url": null
+    },
+    {
+      "name": "Santiago Damián García",
+      "position": "Attack",
+      "dob": "1990-09-14",
+      "citizenship": "Uruguay",
+      "last_season": 2021,
+      "clubs": [
+        "Godoy Cruz"
+      ],
+      "image_url": null
     }
   ]
 }

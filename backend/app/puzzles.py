@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
+from .config import EXCLUDED_CLUBS, MIN_SEASON
+
 Difficulty = Literal["facil", "normal", "dificil"]
 
 MISTAKES: dict[Difficulty, int | None] = {
@@ -52,9 +54,10 @@ def _club_players(conn: sqlite3.Connection, club_id: int, exclude: set[int]) -> 
         WHERE pc.club_id = ? AND p.player_id NOT IN ({ids})
           AND p.image_url IS NOT NULL AND p.image_url != ''
           AND p.image_url NOT LIKE '%default.jpg%'
+          AND p.last_season >= ?
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
-        (club_id, *exclude),
+        (club_id, *exclude, MIN_SEASON),
     ).fetchall()
     return [{"id": r[0], "name": r[1], "image_url": r[2]} for r in rows]
 
@@ -68,9 +71,10 @@ def _nationality_players(conn: sqlite3.Connection, country: str, exclude: set[in
         WHERE pc.country = ? AND p.player_id NOT IN ({ids})
           AND p.image_url IS NOT NULL AND p.image_url != ''
           AND p.image_url NOT LIKE '%default.jpg%'
+          AND p.last_season >= ?
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
-        (country, *exclude),
+        (country, *exclude, MIN_SEASON),
     ).fetchall()
     return [{"id": r[0], "name": r[1], "image_url": r[2]} for r in rows]
 
@@ -83,9 +87,10 @@ def _position_players(conn: sqlite3.Connection, position: str, exclude: set[int]
         WHERE position = ? AND player_id NOT IN ({ids})
           AND image_url IS NOT NULL AND image_url != ''
           AND image_url NOT LIKE '%default.jpg%'
+          AND last_season >= ?
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
-        (position, *exclude),
+        (position, *exclude, MIN_SEASON),
     ).fetchall()
     return [{"id": r[0], "name": r[1], "image_url": r[2]} for r in rows]
 
@@ -106,9 +111,10 @@ def _last_name_players(conn: sqlite3.Connection, last: str, exclude: set[int]) -
           AND player_id NOT IN ({ids})
           AND image_url IS NOT NULL AND image_url != ''
           AND image_url NOT LIKE '%default.jpg%'
+          AND last_season >= ?
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
-        (last, *exclude),
+        (last, *exclude, MIN_SEASON),
     ).fetchall()
     return [{"id": r[0], "name": r[1], "image_url": r[2]} for r in rows]
 
@@ -122,9 +128,10 @@ def _first_name_players(conn: sqlite3.Connection, first: str, exclude: set[int])
           AND player_id NOT IN ({ids})
           AND image_url IS NOT NULL AND image_url != ''
           AND image_url NOT LIKE '%default.jpg%'
+          AND last_season >= ?
         LIMIT 20
         """.format(ids=",".join("?" * len(exclude)) or "0"),
-        (first, *exclude),
+        (first, *exclude, MIN_SEASON),
     ).fetchall()
     return [{"id": r[0], "name": r[1], "image_url": r[2]} for r in rows]
 
@@ -142,15 +149,17 @@ def _available_clubs(conn: sqlite3.Connection) -> list[dict]:
     return [
         {"type": "club", "label": r["name"], "id": r["club_id"]}
         for r in conn.execute(
-            """
+            f"""
             SELECT c.club_id, c.name, COUNT(DISTINCT pc.player_id) AS n
             FROM clubs c JOIN player_clubs pc ON pc.club_id = c.club_id
             JOIN players p ON p.player_id = pc.player_id
             WHERE p.image_url IS NOT NULL AND p.image_url != ''
               AND p.image_url NOT LIKE '%default.jpg%'
+              AND p.last_season >= ?
+              AND c.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
             GROUP BY c.club_id HAVING n >= ?
             """,
-            (MIN_POOL_PER_LABEL,),
+            (MIN_SEASON, *EXCLUDED_CLUBS, MIN_POOL_PER_LABEL),
         ).fetchall()
     ]
 
@@ -165,9 +174,10 @@ def _available_nationalities(conn: sqlite3.Connection) -> list[dict]:
             JOIN players p ON p.player_id = pc.player_id
             WHERE p.image_url IS NOT NULL AND p.image_url != ''
               AND p.image_url NOT LIKE '%default.jpg%'
+              AND p.last_season >= ?
             GROUP BY pc.country HAVING n >= ?
             """,
-            (MIN_POOL_PER_LABEL,),
+            (MIN_SEASON, MIN_POOL_PER_LABEL),
         ).fetchall()
     ]
 
@@ -181,9 +191,10 @@ def _available_positions(conn: sqlite3.Connection) -> list[dict]:
             FROM players WHERE position IS NOT NULL
               AND image_url IS NOT NULL AND image_url != ''
               AND image_url NOT LIKE '%default.jpg%'
+              AND last_season >= ?
             GROUP BY position HAVING n >= ?
             """,
-            (MIN_POOL_PER_LABEL,),
+            (MIN_SEASON, MIN_POOL_PER_LABEL),
         ).fetchall()
     ]
 
@@ -194,9 +205,10 @@ def _available_last_names(conn: sqlite3.Connection) -> list[dict]:
         SELECT name, COUNT(*) AS n FROM players
         WHERE image_url IS NOT NULL AND image_url != ''
           AND image_url NOT LIKE '%default.jpg%'
+          AND last_season >= ?
         GROUP BY name HAVING n >= ? AND n <= 12
         """,
-        (GROUP_SIZE,),
+        (MIN_SEASON, GROUP_SIZE),
     ).fetchall()
     return [
         {"type": "last_name", "label": _last_name(r[0]), "display": r[0]}
@@ -212,9 +224,10 @@ def _available_first_names(conn: sqlite3.Connection) -> list[dict]:
         FROM players
         WHERE image_url IS NOT NULL AND image_url != ''
           AND image_url NOT LIKE '%default.jpg%'
+          AND last_season >= ?
         GROUP BY first HAVING n >= ? AND n <= 15
         """,
-        (GROUP_SIZE,),
+        (MIN_SEASON, GROUP_SIZE),
     ).fetchall()
     return [
         {"type": "first_name", "label": r[0]}

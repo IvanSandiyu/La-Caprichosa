@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
+from .config import EXCLUDED_CLUBS
+
 Difficulty = Literal["facil", "normal", "dificil"]
 
 TEAMMATES_COUNT = 5
@@ -101,9 +103,10 @@ def _clubmates(
         WHERE pc1.player_id = ?
           AND p.image_url IS NOT NULL AND p.image_url != ''
           AND p.image_url NOT LIKE '%default.jpg%'
+          AND pc1.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
           {('AND ' + window_sql) if window_sql else ''}
         """,
-        (player_id, *window_params),
+        (player_id, *EXCLUDED_CLUBS, *window_params),
     ).fetchall()
 
     result = []
@@ -163,6 +166,7 @@ def _mystery_candidates(
         WHERE p.image_url IS NOT NULL AND p.image_url != ''
           AND p.image_url NOT LIKE '%default.jpg%'
           AND p.dob IS NOT NULL AND p.dob != '' AND p.dob NOT LIKE '2000-01-01%'
+          AND pc1.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
           {('AND ' + window_sql) if window_sql else ''}
           AND (
             p2.dob IS NULL
@@ -171,7 +175,7 @@ def _mystery_candidates(
         GROUP BY p.player_id
         HAVING n >= ?
         """,
-        (*window_params, min_clubmates),
+        (*EXCLUDED_CLUBS, *window_params, min_clubmates),
     ).fetchall()
     return [{"id": r[0], "name": r[1], "image_url": r[2], "n": r[3]} for r in rows]
 

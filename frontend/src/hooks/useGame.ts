@@ -229,6 +229,28 @@ export function useGame(grid: GridData | null, initialMode: TimeMode = "relax") 
     }
   }, [revealed]);
 
+  /** Rendirse: revela las respuestas, termina la partida y cuenta derrota. */
+  const surrender = useCallback(async () => {
+    if (finished || revealed) return;
+    setRunning(false);
+    setPendingChoice(null);
+    try {
+      const cells = await api.reveal();
+      const next: (Placement | null)[] = Array(9).fill(null);
+      for (const c of cells) {
+        next[c.row * 3 + c.col] = { playerId: c.player_id, name: c.name, imageUrl: c.image_url };
+      }
+      setPlacements(next);
+      setRevealed(true);
+    } catch {
+      /* si falla la revelación, no termina el juego */
+    }
+    setFinished(true);
+    setWon(false);
+    setFeedback({ kind: "miss", text: "Te rendiste. Acá están las respuestas." });
+    registerResult(false);
+  }, [finished, revealed, registerResult]);
+
   const resetDay = useCallback(() => {
     localStorage.removeItem(GAME_KEY(date));
     setPlacements(Array(9).fill(null));
@@ -252,6 +274,7 @@ export function useGame(grid: GridData | null, initialMode: TimeMode = "relax") 
     won,
     revealed,
     onReveal,
+    surrender,
     mode,
     setMode,
     timeLimit,

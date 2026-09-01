@@ -11,6 +11,7 @@ from datetime import date
 
 from .db import get_conn
 from .text import normalize
+from .config import EXCLUDED_CLUBS
 
 MIN_CELL_POOL = 8          # mínimo ideal de jugadores válidos por celda
 FLOOR_CELL_POOL = 2        # piso aceptable si no hay nada mejor
@@ -35,12 +36,13 @@ class Grid:
 def _load_labels(conn: sqlite3.Connection) -> list[Label]:
     labels: list[Label] = []
     clubs = conn.execute(
-        """
+        f"""
         SELECT c.club_id, c.name, COUNT(DISTINCT pc.player_id) AS n
         FROM clubs c JOIN player_clubs pc ON pc.club_id = c.club_id
+        WHERE c.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
         GROUP BY c.club_id HAVING n >= ?
         """,
-        (MIN_LABEL_POOL,),
+        (*EXCLUDED_CLUBS, MIN_LABEL_POOL),
     ).fetchall()
     for row in clubs:
         labels.append(Label("club", str(row["club_id"]), row["name"]))

@@ -123,7 +123,11 @@ CLUB_OVERRIDES = {
 }
 
 
-def merge_enrichment(cur: sqlite3.Cursor, club_names: dict[int, str]) -> int:
+def merge_enrichment(
+    cur: sqlite3.Cursor,
+    club_names: dict[int, str],
+    default_season: int | None = None,
+) -> int:
     """Inserta jugadores curados de enrichment.json con IDs sintéticos negativos."""
     if not ENRICHMENT_PATH.exists():
         return 0
@@ -139,8 +143,9 @@ def merge_enrichment(cur: sqlite3.Cursor, club_names: dict[int, str]) -> int:
         if cur.fetchone():
             continue
         pid = -(idx + 1)
+        season = entry.get("last_season") or default_season
         cur.execute(
-            "INSERT INTO players VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO players VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 pid,
                 entry["name"],
@@ -149,6 +154,7 @@ def merge_enrichment(cur: sqlite3.Cursor, club_names: dict[int, str]) -> int:
                 entry.get("dob"),
                 entry.get("citizenship"),
                 entry.get("image_url"),
+                season,
             ),
         )
         if entry.get("citizenship"):
@@ -227,6 +233,7 @@ def build_db(players, transfers, clubs, games, appearances) -> None:
             "date_of_birth",
             "country_of_citizenship",
             "image_url",
+            "last_season",
             "current_national_team_name" if "current_national_team_name" in players.columns else "current_national_team_id",
         ]
     ].copy()
@@ -276,7 +283,8 @@ def build_db(players, transfers, clubs, games, appearances) -> None:
             position TEXT,
             dob TEXT,
             citizenship TEXT,
-            image_url TEXT
+            image_url TEXT,
+            last_season INTEGER
         );
         CREATE TABLE clubs (
             club_id INTEGER PRIMARY KEY,
@@ -301,7 +309,7 @@ def build_db(players, transfers, clubs, games, appearances) -> None:
     )
 
     cur.executemany(
-        "INSERT INTO players VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO players VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
             (
                 int(r.player_id),
@@ -311,6 +319,7 @@ def build_db(players, transfers, clubs, games, appearances) -> None:
                 getattr(r, "date_of_birth", None),
                 getattr(r, "country_of_citizenship", None),
                 getattr(r, "image_url", None),
+                getattr(r, "last_season", None),
             )
             for r in p.itertuples(index=False)
         ],
@@ -329,7 +338,10 @@ def build_db(players, transfers, clubs, games, appearances) -> None:
     )
 
     # --- enriquecimiento curado (jugadores ausentes en el dataset) ---
-    added = merge_enrichment(cur, club_names)
+    default_season = None
+    if p.get("last_season").notna().any():
+        default_season = int(p["last_season"].max())
+    added = merge_enrichment(cur, club_names, default_season)
 
     # --- historia pre-2010 vía Wikidata (P54 con salida < 2012) ---
     try:

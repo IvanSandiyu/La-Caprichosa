@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
+from .config import EXCLUDED_CLUBS
+
 Difficulty = Literal["facil", "normal", "dificil"]
 
 BOARD_SIZE = 9
@@ -372,9 +374,10 @@ def _available_clubs(conn: sqlite3.Connection, rng: random.Random, min_match: in
         FROM clubs c JOIN player_clubs pc ON pc.club_id = c.club_id
         JOIN players p ON p.player_id = pc.player_id
         WHERE {_img('p')}
+          AND c.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
         GROUP BY c.club_id HAVING n >= ?
         """,
-        (min_match,),
+        (*EXCLUDED_CLUBS, min_match),
     ).fetchall()
     out = [{"type": "club", "label": r[1], "id": r[0]} for r in rows]
     rng.shuffle(out)
@@ -391,9 +394,10 @@ def _available_youth_clubs(conn: sqlite3.Connection, rng: random.Random, min_mat
         JOIN clubs c ON c.club_id = py.club_id
         JOIN players p ON p.player_id = py.player_id
         WHERE {_img('p')}
+          AND c.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
         GROUP BY c.club_id HAVING n >= ?
         """,
-        (min_match,),
+        (*EXCLUDED_CLUBS, min_match),
     ).fetchall()
     out = [{"type": "youth_club", "label": r[1], "id": r[0]} for r in rows]
     rng.shuffle(out)
@@ -482,10 +486,12 @@ def _available_two_clubs(conn: sqlite3.Connection, rng: random.Random, min_match
         JOIN clubs b ON b.club_id = pb.club_id
         JOIN players p ON p.player_id = pa.player_id
         WHERE {_img('p')}
+          AND a.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
+          AND b.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
         GROUP BY pa.club_id, pb.club_id HAVING n >= ?
         ORDER BY n DESC LIMIT 60
         """,
-        (min_match,),
+        (*EXCLUDED_CLUBS, *EXCLUDED_CLUBS, min_match),
     ).fetchall()
     out = [
         {"type": "two_clubs", "id1": r[0], "name1": r[1], "id2": r[2], "name2": r[3]}
@@ -504,10 +510,11 @@ def _available_club_country(conn: sqlite3.Connection, rng: random.Random, min_ma
         JOIN players p ON p.player_id = pc.player_id
         JOIN player_countries pcnt ON pcnt.player_id = p.player_id
         WHERE {_img('p')} AND pcnt.norm = 'argentina'
+          AND c.club_id NOT IN ({",".join("?" for _ in EXCLUDED_CLUBS)})
         GROUP BY c.club_id HAVING n >= ?
         ORDER BY n DESC LIMIT 40
         """,
-        (min_match,),
+        (*EXCLUDED_CLUBS, min_match),
     ).fetchall()
     out = [
         {"type": "club_country", "id": r[0], "club": r[1], "country": r[2]}
