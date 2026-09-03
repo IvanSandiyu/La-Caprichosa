@@ -8,6 +8,7 @@ venv/
 # --- cachés del pipeline (regenerables) ---
 pipeline/wikidata_history.json
 pipeline/wikidata_images.json
+pipeline/bdfa_cache.json
 # la base SQLite SÍ se commitea (necesaria para correr el backend en producción)
 
 # --- entornos / secretos ---
