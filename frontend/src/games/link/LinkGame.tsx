@@ -113,9 +113,13 @@ function TeammateCard({
             <span className="block w-full text-[8px] font-bold leading-tight text-sky-300/80">{years}</span>
           )}
           {clubs && clubs.length > 0 && (
-            <span className="block w-full truncate text-[7px] font-medium leading-tight text-white/50">
-              {clubs.join(", ")}
-            </span>
+            <div className="flex w-full flex-col items-center gap-px">
+              {clubs.map((club, i) => (
+                <span key={i} className="block w-full text-[7px] font-medium leading-tight text-white/50">
+                  {club}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       )}

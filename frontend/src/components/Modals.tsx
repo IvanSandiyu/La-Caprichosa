@@ -69,23 +69,45 @@ export interface StatsData {
   best: number;
   played: number;
   wins: number;
+  history?: Array<{ date: string; won: boolean }>;
 }
 
 export function StatsPanel({ stats }: { stats: StatsData }) {
   const pct = stats.played ? Math.round((stats.wins / stats.played) * 100) : 0;
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {[
-        { label: "Racha actual", value: stats.streak },
-        { label: "Mejor racha", value: stats.best },
-        { label: "Partidos jugados", value: stats.played },
-        { label: "% completadas", value: `${pct}%` },
-      ].map(({ label, value }) => (
-        <div key={label} className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-center">
-          <div className="text-2xl font-black text-sky-300">{value}</div>
-          <div className="mt-1 text-xs text-white/60">{label}</div>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: "Racha actual", value: stats.streak },
+          { label: "Mejor racha", value: stats.best },
+          { label: "Partidos jugados", value: stats.played },
+          { label: "% completadas", value: `${pct}%` },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-center">
+            <div className="text-2xl font-black text-sky-300">{value}</div>
+            <div className="mt-1 text-xs text-white/60">{label}</div>
+          </div>
+        ))}
+      </div>
+      {stats.history && stats.history.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-white/40">Historial</p>
+          <div className="flex flex-wrap gap-1">
+            {stats.history.slice(-30).map((h) => (
+              <span
+                key={h.date}
+                className={[
+                  "inline-flex h-7 w-7 items-center justify-center rounded text-[10px] font-bold",
+                  h.won ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300",
+                ].join(" ")}
+                title={`${h.date}: ${h.won ? "Victoria" : "Derrota"}`}
+              >
+                {h.won ? "W" : "L"}
+              </span>
+            ))}
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }

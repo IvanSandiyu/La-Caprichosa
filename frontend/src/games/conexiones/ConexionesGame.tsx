@@ -413,7 +413,7 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
                   key={`${cell.groupIndex}-${cell.playerId}`}
                   onClick={() => toggle(localIdx)}
                   className={[
-                    "aspect-square overflow-hidden rounded-xl border-2 p-[15%] transition",
+                    "relative aspect-square overflow-hidden rounded-xl border-2 transition",
                     isSelected
                       ? "border-sky-400 bg-sky-400/20 scale-105"
                       : "border-white/15 bg-transparent hover:bg-white/[0.04] hover:scale-[1.02]",
@@ -422,8 +422,11 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
                   <img
                     src={cell.imageUrl ?? undefined}
                     alt=""
-                    className="h-full w-full rounded-full object-cover"
+                    className="h-full w-full object-cover"
                   />
+                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1 pb-1 pt-3 text-center text-[7px] font-bold leading-tight text-white/90">
+                    {cell.name.split(" ").slice(-1)[0]}
+                  </span>
                 </button>
               );
             })}

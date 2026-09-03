@@ -57,6 +57,21 @@
         "Godoy Cruz"
       ],
       "image_url": null
+    },
+    {
+      "name": "Pablo Javier Pérez",
+      "position": "Midfield",
+      "dob": "1985-08-10",
+      "citizenship": "Argentina",
+      "last_season": 2024,
+      "clubs": [
+        "Newell's Old Boys",
+        "Unión (SF)",
+        "Boca Juniors",
+        "Independiente",
+        "Sarmiento (Junín)"
+      ],
+      "image_url": null
     }
   ]
 }

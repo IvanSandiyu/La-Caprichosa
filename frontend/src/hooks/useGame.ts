@@ -29,6 +29,7 @@ export interface Stats {
   played: number;
   wins: number;
   lastDate: string | null;
+  history: Array<{ date: string; won: boolean }>;
 }
 
 export interface SavedGame {
@@ -52,7 +53,7 @@ function loadStats(): Stats {
   } catch {
     /* corrupto: se regenera */
   }
-  return { streak: 0, best: 0, played: 0, wins: 0, lastDate: null };
+  return { streak: 0, best: 0, played: 0, wins: 0, lastDate: null, history: [] };
 }
 
 function saveStats(s: Stats) {
@@ -125,6 +126,7 @@ export function useGame(grid: GridData | null, initialMode: TimeMode = "relax") 
           played: prev.played + 1,
           wins: prev.wins + (didWin ? 1 : 0),
           lastDate: date,
+          history: [...(prev.history ?? []), { date, won: didWin }],
         };
         saveStats(next);
         return next;
@@ -218,16 +220,19 @@ export function useGame(grid: GridData | null, initialMode: TimeMode = "relax") 
     if (revealed) return;
     try {
       const cells = await api.reveal();
-      const next: (Placement | null)[] = Array(9).fill(null);
+      const next = [...placements];
       for (const c of cells) {
-        next[c.row * 3 + c.col] = { playerId: c.player_id, name: c.name, imageUrl: c.image_url };
+        const idx = c.row * 3 + c.col;
+        if (next[idx] === null) {
+          next[idx] = { playerId: c.player_id, name: c.name, imageUrl: c.image_url };
+        }
       }
       setPlacements(next);
       setRevealed(true);
     } catch {
       /* silenciar errores de red */
     }
-  }, [revealed]);
+  }, [revealed, placements]);
 
   /** Rendirse: revela las respuestas, termina la partida y cuenta derrota. */
   const surrender = useCallback(async () => {
@@ -236,9 +241,12 @@ export function useGame(grid: GridData | null, initialMode: TimeMode = "relax") 
     setPendingChoice(null);
     try {
       const cells = await api.reveal();
-      const next: (Placement | null)[] = Array(9).fill(null);
+      const next = [...placements];
       for (const c of cells) {
-        next[c.row * 3 + c.col] = { playerId: c.player_id, name: c.name, imageUrl: c.image_url };
+        const idx = c.row * 3 + c.col;
+        if (next[idx] === null) {
+          next[idx] = { playerId: c.player_id, name: c.name, imageUrl: c.image_url };
+        }
       }
       setPlacements(next);
       setRevealed(true);
@@ -249,7 +257,7 @@ export function useGame(grid: GridData | null, initialMode: TimeMode = "relax") 
     setWon(false);
     setFeedback({ kind: "miss", text: "Te rendiste. Acá están las respuestas." });
     registerResult(false);
-  }, [finished, revealed, registerResult]);
+  }, [finished, revealed, placements, registerResult]);
 
   const resetDay = useCallback(() => {
     localStorage.removeItem(GAME_KEY(date));
