@@ -7,6 +7,7 @@ interface Props {
   onSelect: (player: SearchHit) => void;
   onEnter?: (player: SearchHit) => void;
   placeholder?: string;
+  inputClassName?: string;
 }
 
 export interface SimpleSearchHandle {
@@ -22,7 +23,7 @@ function scoreHit(normName: string, q: string): number | null {
 }
 
 export const SimpleSearch = forwardRef<SimpleSearchHandle, Props>(
-  function SimpleSearch({ onSelect, onEnter, placeholder }, ref) {
+  function SimpleSearch({ onSelect, onEnter, placeholder, inputClassName }, ref) {
     const [query, setQuery] = useState("");
     const [highlight, setHighlight] = useState(0);
     const [open, setOpen] = useState(false);
@@ -94,7 +95,7 @@ export const SimpleSearch = forwardRef<SimpleSearchHandle, Props>(
             }
           }}
           placeholder={placeholder ?? "Buscar jugador..."}
-          className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-sky-400/60 focus:outline-none"
+          className={inputClassName ?? "w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-sky-400/60 focus:outline-none"}
         />
         {open && results.length > 0 && (
           <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-xl border border-white/15 bg-slate-900 shadow-xl">

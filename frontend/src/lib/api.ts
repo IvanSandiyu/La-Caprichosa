@@ -89,6 +89,24 @@ export interface LinkPuzzleData {
   teammates: LinkTeammate[];
 }
 
+/* ── Statdle ──────────────────────────────────────────── */
+
+export interface StatdleSlot {
+  kind: string;
+  label: string;
+  value: string | null;
+  locked: boolean;
+}
+
+export interface StatdlePuzzleData {
+  date: string;
+  difficulty: Difficulty;
+  league: string;
+  season: number | null;
+  target: { id: number; name: string; image_url: string | null };
+  slots: StatdleSlot[];
+}
+
 /* ── Impostor ──────────────────────────────────────────── */
 
 export interface ImpostorPlayer {
@@ -144,4 +162,7 @@ export const api = {
 
   getImpostor: (difficulty: string) =>
     fetch(url(`impostor/today?difficulty=${difficulty}`)).then((r) => toJson<ImpostorPuzzleData>(r)),
+
+  getStatdle: (difficulty: string) =>
+    fetch(url(`statdle/today?difficulty=${difficulty}`)).then((r) => toJson<StatdlePuzzleData>(r)),
 };

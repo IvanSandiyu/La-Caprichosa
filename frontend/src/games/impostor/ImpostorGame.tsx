@@ -5,6 +5,8 @@ import { todayKey } from "../../lib/format";
 import type { ImpostorMode } from "../../lib/games";
 import { Silhouette } from "../../components/Silhouette";
 import { GameFooter } from "../../components/GameFooter";
+import { GameHeader } from "../../components/GameHeader";
+import { useGameStats } from "../../hooks/useGameStats";
 
 interface Props {
   difficulty: Difficulty;
@@ -98,6 +100,8 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
   const [won, setWon] = useState(false);
   const [justLost, setJustLost] = useState(false);
 
+  const gs = useGameStats("impostor", todayKey());
+
   const saved = useMemo(() => loadSaved(difficulty, mode), [difficulty, mode]);
 
   useEffect(() => {
@@ -133,14 +137,16 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
     if (allCorrectSelected && noImpostor) {
       setWon(true);
       setGameOver(true);
+      gs.registerResult(true);
       saveResult(difficulty, mode, true);
     } else {
       setWon(false);
       setGameOver(true);
       setJustLost(true);
+      gs.registerResult(false);
       saveResult(difficulty, mode, false);
     }
-  }, [puzzle, gameOver, selected, difficulty, mode]);
+  }, [puzzle, gameOver, selected, difficulty, mode, gs.registerResult]);
 
   // modo uno-a-uno: tocar un jugador
   const pickOne = useCallback(
@@ -156,16 +162,18 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
         if (allCorrect) {
           setWon(true);
           setGameOver(true);
+          gs.registerResult(true);
           saveResult(difficulty, mode, true);
         }
       } else {
         setWon(false);
         setGameOver(true);
         setJustLost(true);
+        gs.registerResult(false);
         saveResult(difficulty, mode, false);
       }
     },
-    [puzzle, gameOver, locked, difficulty, mode],
+    [puzzle, gameOver, locked, difficulty, mode, gs.registerResult],
   );
 
   if (error) {
@@ -232,14 +240,12 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
       )}
 
       {/* header */}
-      <div className="flex w-full items-center justify-between">
-        <button onClick={onExit} className="text-xs font-semibold text-white/60 transition hover:text-white">
-          ← Salir
-        </button>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
-          {mode === "normal" ? "Normal" : "Uno a uno"}
-        </span>
-      </div>
+      <GameHeader
+        gameId="impostor"
+        subtitle={`El Impostor · ${mode === "normal" ? "Normal" : "Uno a uno"}`}
+        onExit={onExit}
+        stats={gs.stats}
+      />
 
       {/* categoría */}
       <div className="w-full rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-center">

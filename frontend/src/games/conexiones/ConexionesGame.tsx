@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PuzzleData, PuzzleGroupData, Difficulty } from "../../lib/api";
 import { api } from "../../lib/api";
-import { prettyDate } from "../../lib/format";
+import { prettyDate, todayKey } from "../../lib/format";
 import { GameFooter } from "../../components/GameFooter";
+import { GameHeader } from "../../components/GameHeader";
+import { useGameStats } from "../../hooks/useGameStats";
 
 const MAX_MISTAKES: Record<Difficulty, number | null> = {
   facil: null,
@@ -143,6 +145,8 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
   const [oneAway, setOneAway] = useState(false);
   const [justRevealed, setJustRevealed] = useState<number | null>(null);
 
+  const gs = useGameStats("conexiones", todayKey());
+
   const maxMistakes = MAX_MISTAKES[difficulty];
 
   useEffect(() => {
@@ -225,6 +229,15 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
   const isGameOver = mistakes >= (maxMistakes ?? Infinity);
   const isWin = solved.size === 4;
 
+  const prevEnd = useRef(false);
+  useEffect(() => {
+    if (!puzzle) return;
+    if ((isGameOver || isWin) && !prevEnd.current) {
+      gs.registerResult(isWin);
+    }
+    prevEnd.current = isGameOver || isWin;
+  }, [isGameOver, isWin, puzzle, gs.registerResult]);
+
   const allGroups: SolvedGroup[] = useMemo(() => {
     if (!puzzle) return [];
     return puzzle.groups.map((g, i) => ({
@@ -256,33 +269,12 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
   if (isGameOver || isWin) {
     return (
       <>
-        <header className="flex w-full items-center justify-between border-b border-white/5 py-5">
-          <div>
-            <h1
-              onClick={onExit}
-              title={onExit ? "Volver al menú" : undefined}
-              className={[
-                "bg-gradient-to-r from-sky-300 via-white to-amber-200 bg-clip-text text-2xl font-black tracking-tight text-transparent",
-                onExit ? "cursor-pointer transition hover:from-sky-200 hover:to-amber-100" : "",
-              ].join(" ")}
-            >
-              LA CAPRICHOSA
-            </h1>
-            <p className="text-xs capitalize text-white/50">
-              Conexiones · {prettyDate(puzzle.date)}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {onExit && (
-              <button
-                onClick={onExit}
-                className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/5"
-              >
-                ← Menú
-              </button>
-            )}
-          </div>
-        </header>
+        <GameHeader
+          gameId="conexiones"
+          subtitle={`Conexiones · ${prettyDate(puzzle.date)}`}
+          onExit={onExit}
+          stats={gs.stats}
+        />
 
         <div className="mb-3 flex flex-wrap items-center justify-center gap-3">
           <span
@@ -317,33 +309,12 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
   /* ── juego en curso ─── */
   return (
     <>
-      <header className="flex w-full items-center justify-between border-b border-white/5 py-5">
-        <div>
-          <h1
-            onClick={onExit}
-            title={onExit ? "Volver al menú" : undefined}
-            className={[
-              "bg-gradient-to-r from-sky-300 via-white to-amber-200 bg-clip-text text-2xl font-black tracking-tight text-transparent",
-              onExit ? "cursor-pointer transition hover:from-sky-200 hover:to-amber-100" : "",
-            ].join(" ")}
-          >
-            LA CAPRICHOSA
-          </h1>
-          <p className="text-xs capitalize text-white/50">
-            Conexiones · {prettyDate(puzzle.date)}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {onExit && (
-            <button
-              onClick={onExit}
-              className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/5"
-            >
-              ← Menú
-            </button>
-          )}
-        </div>
-      </header>
+      <GameHeader
+        gameId="conexiones"
+        subtitle={`Conexiones · ${prettyDate(puzzle.date)}`}
+        onExit={onExit}
+        stats={gs.stats}
+      />
 
       <div className="mb-3 flex flex-wrap items-center justify-center gap-3">
         <span className="rounded-lg bg-sky-400/10 px-2 py-0.5 text-xs font-bold text-sky-200">

@@ -8,6 +8,7 @@ import { GridGame } from "./games/grid/GridGame";
 import { ConexionesGame } from "./games/conexiones/ConexionesGame";
 import { LinkGame } from "./games/link/LinkGame";
 import { ImpostorGame } from "./games/impostor/ImpostorGame";
+import { StatdleGameUI } from "./games/statdle/StatdleGame";
 
 type View =
   | { name: "menu" }
@@ -15,7 +16,8 @@ type View =
   | { name: "grid"; timeMode: TimeMode }
   | { name: "conexiones"; difficulty: Difficulty }
   | { name: "futbol-link"; difficulty: Difficulty }
-  | { name: "impostor"; difficulty: Difficulty; mode: ImpostorMode };
+  | { name: "impostor"; difficulty: Difficulty; mode: ImpostorMode }
+  | { name: "statdle"; difficulty: Difficulty };
 
 export default function App() {
   const [view, setView] = useState<View>({ name: "menu" });
@@ -38,6 +40,9 @@ export default function App() {
             }
             onStartImpostor={(difficulty, mode) =>
               setView({ name: "impostor", difficulty, mode })
+            }
+            onStartStatdle={(difficulty) =>
+              setView({ name: "statdle", difficulty })
             }
             onBack={() => setView({ name: "menu" })}
           />
@@ -85,6 +90,17 @@ export default function App() {
         <ImpostorGame
           difficulty={view.difficulty}
           mode={view.mode}
+          onExit={() => setView({ name: "menu" })}
+        />
+      </div>
+    );
+  }
+
+  if (view.name === "statdle") {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-4 pb-10">
+        <StatdleGameUI
+          difficulty={view.difficulty}
           onExit={() => setView({ name: "menu" })}
         />
       </div>

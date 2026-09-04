@@ -10,6 +10,7 @@ from . import grid as grid_mod
 from . import impostor as impostor_mod
 from . import link as link_mod
 from . import puzzles as puzzles_mod
+from . import statdle as statdle_mod
 from .config import GAME_NAME
 from .db import get_conn
 from .schemas import CellInfo, GuessRequest, GuessResponse, GridLabel, SearchHit
@@ -37,6 +38,7 @@ _grid_cache: dict[str, grid_mod.Grid] = {}
 _puzzle_cache: dict[str, puzzles_mod.Puzzle] = {}
 _link_cache: dict[str, link_mod.LinkPuzzle] = {}
 _impostor_cache: dict[str, impostor_mod.ImpostorPuzzle] = {}
+_statdle_cache: dict[str, statdle_mod.StatdlePuzzle] = {}
 
 
 def get_grid(game_date: date) -> grid_mod.Grid:
@@ -181,6 +183,32 @@ def link_today(difficulty: str = "normal"):
         "difficulty": p.difficulty,
         "mystery_player": p.mystery_player,
         "teammates": p.teammates,
+    }
+
+
+@app.get("/api/statdle/today")
+def statdle_today(difficulty: str = "normal"):
+    """Devuelve el puzzle de Statdle del día (jugador + pistas de temporada)."""
+    if difficulty not in ("normal", "dificil"):
+        raise HTTPException(status_code=400, detail="Dificultad inválida")
+    key = f"{date.today().isoformat()}-{difficulty}"
+    if key not in _statdle_cache:
+        _statdle_cache.clear()
+        p = statdle_mod.generate_statdle(date.today(), difficulty)
+        if p is None:
+            raise HTTPException(status_code=500, detail="No se pudo generar puzzle statdle")
+        _statdle_cache[key] = p
+    p = _statdle_cache[key]
+    return {
+        "date": p.game_date.isoformat(),
+        "difficulty": p.difficulty,
+        "league": p.league,
+        "season": p.season,
+        "target": p.target,
+        "slots": [
+            {"kind": c.kind, "label": c.label, "value": c.value, "locked": c.locked}
+            for c in p.slots
+        ],
     }
 
 

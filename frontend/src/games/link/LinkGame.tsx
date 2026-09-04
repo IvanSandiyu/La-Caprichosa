@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Difficulty, LinkPuzzleData, LinkTeammate, SearchHit } from "../../lib/api";
 import { api } from "../../lib/api";
-import { todayKey } from "../../lib/format";
+import { prettyDate, todayKey } from "../../lib/format";
 import { SimpleSearch } from "./SimpleSearch";
 import { Silhouette } from "../../components/Silhouette";
 import { GameFooter } from "../../components/GameFooter";
+import { GameHeader } from "../../components/GameHeader";
+import { useGameStats } from "../../hooks/useGameStats";
 
 interface Props {
   difficulty: Difficulty;
@@ -74,7 +76,7 @@ function TeammateCard({
   if (!revealed && !flipping) {
     return (
       <div className="flex aspect-[3/4] w-full items-center justify-center rounded-xl border border-white/15 bg-white/[0.06]">
-        <span className="text-2xl font-black text-white/20">?</span>
+        <span className="text-lg font-black text-white/20">?</span>
       </div>
     );
   }
@@ -142,6 +144,8 @@ export function LinkGame({ difficulty, onExit }: Props) {
   const [showHints, setShowHints] = useState(false);
   const searchRef = useRef<{ clear: () => void } | null>(null);
 
+  const gs = useGameStats("futbol-link", todayKey());
+
   const saved = useMemo(() => loadSaved(difficulty), [difficulty]);
   useEffect(() => {
     if (saved) {
@@ -176,6 +180,7 @@ export function LinkGame({ difficulty, onExit }: Props) {
       setWon(true);
       setGameOver(true);
       setFeedback({ kind: "ok", text: "¡Correcto! ¡Encontraste al jugador misterioso!" });
+      gs.registerResult(true);
       saveResult(difficulty, true, revealedCount);
     } else {
       const newAttempts = attempts + 1;
@@ -186,6 +191,7 @@ export function LinkGame({ difficulty, onExit }: Props) {
         setWon(false);
         setJustLost(true);
         setFeedback({ kind: "fail", text: "Se acabaron los intentos" });
+        gs.registerResult(false);
         saveResult(difficulty, false, revealedCount);
       } else if (!allRevealed) {
         const next = Math.min(revealedCount + 1, TOTAL_TEAMMATES);
@@ -195,13 +201,25 @@ export function LinkGame({ difficulty, onExit }: Props) {
         setFeedback({ kind: "fail", text: "¡No es ese! Intento " + newAttempts + "/" + MAX_ATTEMPTS });
       }
     }
-  }, [puzzle, selectedPlayer, gameOver, attempts, difficulty, allRevealed]);
+  }, [puzzle, selectedPlayer, gameOver, attempts, difficulty, allRevealed, gs.registerResult]);
 
   const handleSkip = useCallback(() => {
     if (gameOver || allRevealed) return;
     setRevealedCount((n) => Math.min(n + 1, TOTAL_TEAMMATES));
     setFeedback({ kind: "fail", text: "Saltaste. Mirá el siguiente compañero" });
   }, [gameOver, allRevealed]);
+
+  /** Rendirse: revela el jugador misterioso, termina la partida y cuenta derrota. */
+  const handleSurrender = useCallback(() => {
+    if (gameOver) return;
+    setRevealedCount(TOTAL_TEAMMATES);
+    setGameOver(true);
+    setWon(false);
+    setJustLost(true);
+    setFeedback({ kind: "fail", text: "Te rendiste. Este era el jugador misterioso." });
+    gs.registerResult(false);
+    saveResult(difficulty, false, TOTAL_TEAMMATES);
+  }, [gameOver, difficulty, gs.registerResult]);
 
   if (error) {
     return (
@@ -213,7 +231,7 @@ export function LinkGame({ difficulty, onExit }: Props) {
   }
 
   return (
-    <div className="flex w-full flex-col items-center gap-5 pt-4">
+    <div className="flex w-full flex-col items-center gap-3 pt-2">
       {/* flash rojo al perder */}
       {justLost && (
         <div
@@ -223,55 +241,58 @@ export function LinkGame({ difficulty, onExit }: Props) {
       )}
 
       {/* header */}
-      <div className="flex w-full items-center justify-between">
-        <button onClick={onExit} className="text-xs font-semibold text-white/60 transition hover:text-white">
-          ← Salir
-        </button>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Intentos</span>
-          <div className="flex gap-1">
-            {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
-              <div key={i} className={["h-2 w-2 rounded-full transition", i < attempts ? "bg-red-400" : "bg-white/15"].join(" ")} />
-            ))}
-          </div>
+      <GameHeader
+        gameId="futbol-link"
+        subtitle={puzzle ? `Fútbol Link · ${prettyDate(puzzle.date)}` : "Fútbol Link"}
+        onExit={onExit}
+        stats={gs.stats}
+      />
+
+      {/* intentos */}
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Intentos</span>
+        <div className="flex gap-1">
+          {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+            <div key={i} className={["h-1.5 w-1.5 rounded-full transition", i < attempts ? "bg-red-400" : "bg-white/15"].join(" ")} />
+          ))}
         </div>
       </div>
 
       {/* mystery player */}
-      <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.04]">
+      <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-white/15 bg-white/[0.04]">
         {gameOver && puzzle ? (
           <>
             {puzzle.mystery_player.image_url ? (
               <img src={puzzle.mystery_player.image_url} alt={puzzle.mystery_player.name} className="h-full w-full object-cover" />
             ) : (
-              <Silhouette className="h-14 w-14 text-white/15" />
+              <Silhouette className="h-10 w-10 text-white/15" />
             )}
-            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1 pb-1 pt-3">
-              <span className="block text-center text-[9px] font-bold text-white">{puzzle.mystery_player.name}</span>
+            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1 pb-0.5 pt-2">
+              <span className="block text-center text-[8px] font-bold text-white">{puzzle.mystery_player.name}</span>
             </span>
           </>
         ) : (
           <>
-            <Silhouette className="h-14 w-14 text-white/15" />
-            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-sm font-black text-white">?</span>
+            <Silhouette className="h-10 w-10 text-white/15" />
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[10px] font-black text-white">?</span>
           </>
         )}
       </div>
 
       {/* instruction */}
-      <p className="text-center text-sm font-semibold text-white/60">
+      <p className="text-center text-xs font-semibold text-white/60">
         {gameOver
           ? won ? "¡Ganaste!" : "Se acabaron los intentos"
           : isLastChance ? "Último intento — ¡adiviná quién es!" : "¿Podés adivinar quién es?"}
       </p>
 
       {/* teammates */}
-      <div className="flex w-full max-w-md flex-col gap-1.5">
+      <div className="flex w-full max-w-sm flex-col gap-1.5">
         {!gameOver && !isLastChance && (
           <button
             onClick={() => setShowHints((s) => !s)}
             className={[
-              "self-end rounded-lg px-3 py-1.5 text-[11px] font-bold transition",
+              "self-end rounded-lg px-2.5 py-1 text-[10px] font-bold transition",
               showHints
                 ? "bg-sky-500/30 text-sky-200"
                 : "bg-white/10 text-white/60 hover:bg-white/15",
@@ -280,7 +301,7 @@ export function LinkGame({ difficulty, onExit }: Props) {
             {showHints ? "Ocultar pistas" : "Ayuda"}
           </button>
         )}
-        <div className="grid w-full max-w-md grid-cols-5 gap-2">
+        <div className="grid w-full grid-cols-5 gap-1.5">
           {Array.from({ length: 5 }).map((_, i) => {
             const t = teammates[i];
             if (!t) return <div key={i} className="aspect-[3/4] rounded-xl bg-white/[0.04]" />;
@@ -302,11 +323,11 @@ export function LinkGame({ difficulty, onExit }: Props) {
 
       {/* conexiones after game over */}
       {gameOver && puzzle && (
-        <div className="w-full max-w-md space-y-1.5">
+        <div className="w-full max-w-sm space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Conexiones</p>
           {teammates.map((t: LinkTeammate, i: number) => (
-            <div key={i} className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/70">
-              <img src={t.image_url ?? undefined} alt="" className="h-6 w-6 shrink-0 rounded object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            <div key={i} className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] px-2.5 py-1.5 text-[11px] text-white/70">
+              <img src={t.image_url ?? undefined} alt="" className="h-5 w-5 shrink-0 rounded object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               <span className="font-semibold text-white/90">{puzzle.mystery_player.name}</span>
               <span className="text-white/40">jugó con</span>
               <span className="font-semibold text-white/90">{t.name}</span>
@@ -320,7 +341,7 @@ export function LinkGame({ difficulty, onExit }: Props) {
       {/* feedback */}
       {feedback && (
         <div className={[
-          "w-full max-w-md rounded-xl px-4 py-2.5 text-center text-sm font-bold",
+          "w-full max-w-sm rounded-lg px-3 py-2 text-center text-xs font-bold",
           feedback.kind === "ok" ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300",
         ].join(" ")}>
           {feedback.text}
@@ -329,7 +350,7 @@ export function LinkGame({ difficulty, onExit }: Props) {
 
       {/* search + guess */}
       {!gameOver && (
-        <div className="flex w-full max-w-md flex-col gap-3">
+        <div className="flex w-full max-w-sm flex-col gap-2">
           <SimpleSearch
             ref={searchRef}
             onSelect={(p) => setSelectedPlayer(p)}
@@ -340,7 +361,7 @@ export function LinkGame({ difficulty, onExit }: Props) {
             {!allRevealed && (
               <button
                 onClick={handleSkip}
-                className="rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-white/70 transition hover:bg-white/15"
+                className="rounded-lg bg-white/10 px-4 py-2 text-xs font-bold text-white/70 transition hover:bg-white/15"
               >
                 Saltar
               </button>
@@ -348,16 +369,23 @@ export function LinkGame({ difficulty, onExit }: Props) {
             <button
               onClick={() => handleGuess()}
               disabled={!selectedPlayer}
-              className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-black uppercase text-slate-950 transition hover:bg-sky-400 disabled:opacity-30"
+              className="w-full rounded-lg bg-sky-500 px-4 py-2 text-xs font-black uppercase text-slate-950 transition hover:bg-sky-400 disabled:opacity-30"
             >
               {isLastChance ? "Último intento" : "Adivinar"}
             </button>
           </div>
+          <button
+            onClick={handleSurrender}
+            className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-1.5 text-xs font-bold text-red-300/80 transition hover:bg-red-500/20"
+            title="Abandonar y ver quién era el jugador misterioso"
+          >
+            Rendirse
+          </button>
         </div>
       )}
 
       {gameOver && (
-        <button onClick={onExit} className="mt-2 rounded-xl bg-white/10 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-white/15">
+        <button onClick={onExit} className="mt-1 rounded-lg bg-white/10 px-5 py-2 text-xs font-bold text-white transition hover:bg-white/15">
           Volver al menú
         </button>
       )}

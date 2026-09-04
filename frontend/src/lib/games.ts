@@ -51,6 +51,16 @@ export const GAMES: GameMeta[] = [
       "En modo Normal elegís todos de una; en Uno a uno, de a uno: " +
       "un solo impostor y se terminó. Una categoría nueva cada día.",
   },
+  {
+    id: "statdle",
+    name: "El Statdle",
+    tagline: "Adiviná el jugador por sus estadísticas",
+    description:
+      "Un jugador misterioso jugó una temporada clave en la Primera División argentina. " +
+      "Te damos la temporada y pistas de a una: apareciones, goles, promedio, edad, " +
+      "posición, debut y clubes. Adiviná quién es antes de agotar tus 5 intentos. " +
+      "En modo Difícil las pistas de Club y Nacionalidad quedan bloqueadas.",
+  },
 ];
 
 export function getGame(id: string): GameMeta | undefined {
@@ -83,4 +93,10 @@ export type ImpostorMode = "normal" | "uno-a-uno";
 export const IMPOSTOR_MODE_OPTIONS: { id: ImpostorMode; label: string; hint: string }[] = [
   { id: "normal", label: "Normal", hint: "Seleccioná todos los correctos de una" },
   { id: "uno-a-uno", label: "Uno a uno", hint: "Un impostor y perdés" },
+];
+
+/** Modos de dificultad para Statdle. */
+export const STATDLE_DIFFICULTY_OPTIONS: { id: Difficulty; label: string; hint: string }[] = [
+  { id: "normal", label: "Normal", hint: "9 pistas, en orden aleatorio" },
+  { id: "dificil", label: "Difícil", hint: "7 pistas, Club y País bloqueados" },
 ];
