@@ -27,25 +27,25 @@ export function ConexionesThumbnail() {
   return (
     <div className="flex w-full flex-col gap-1">
       {/* solved connection — BIG */}
-      <div className="flex w-full items-center gap-2 rounded-lg bg-amber-400 px-2.5 py-2">
+      <div className="flex w-full items-center gap-1 overflow-hidden rounded-lg bg-amber-400 px-2 py-1.5">
         <div className="flex shrink-0 gap-1">
           {SOLVED.players.slice(0, 2).map((p) => (
-            <div key={p.name} className="h-9 w-9 overflow-hidden rounded">
+            <div key={p.name} className="h-6 w-6 shrink-0 overflow-hidden rounded">
               <img src={p.url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             </div>
           ))}
         </div>
         <div className="flex min-w-0 flex-1 flex-col items-center">
-          <span className="text-[8px] font-black uppercase leading-tight text-amber-950">
+          <span className="truncate text-[8px] font-black uppercase leading-tight text-amber-950">
             {SOLVED.name}
           </span>
-          <span className="text-[6px] leading-tight text-amber-950/70">
+          <span className="truncate text-[6px] leading-tight text-amber-950/70">
             {SOLVED.players.map((p) => p.name).join(" · ")}
           </span>
         </div>
         <div className="flex shrink-0 gap-1">
           {SOLVED.players.slice(2, 4).map((p) => (
-            <div key={p.name} className="h-9 w-9 overflow-hidden rounded">
+            <div key={p.name} className="h-6 w-6 shrink-0 overflow-hidden rounded">
               <img src={p.url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             </div>
           ))}

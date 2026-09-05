@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PuzzleData, PuzzleGroupData, Difficulty } from "../../lib/api";
 import { api } from "../../lib/api";
 import { prettyDate, todayKey } from "../../lib/format";
@@ -69,17 +69,17 @@ function ConnectionBanner({
   return (
     <div
       className={[
-        "flex w-full items-center justify-between rounded-xl px-4 py-3.5",
+        "flex w-full items-center justify-between gap-2 overflow-hidden rounded-xl px-3 py-3",
         c.bg,
         animate ? "animate-[revealBanner_0.8s_cubic-bezier(0.34,1.56,0.64,1)_forwards]" : "",
       ].join(" ")}
     >
       {/* 2 caras izquierda */}
-      <div className="flex shrink-0 gap-1.5">
+      <div className="flex shrink-0 gap-1">
         {(sg.imageUrls ?? []).slice(0, 2).map((url, i) => (
           <div
             key={i}
-            className="h-12 w-12 overflow-hidden rounded-lg bg-white/20"
+            className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-white/20"
           >
             <img
               src={url ?? undefined}
@@ -93,24 +93,24 @@ function ConnectionBanner({
         ))}
       </div>
       {/* texto centrado */}
-      <div className="flex min-w-0 flex-1 flex-col items-center px-3">
+      <div className="flex min-w-0 flex-1 flex-col items-center px-2">
         <span
-          className={`block text-sm font-black uppercase leading-tight ${c.text}`}
+          className={`block w-full truncate text-center text-sm font-black uppercase leading-tight ${c.text}`}
         >
           {sg.name}
         </span>
         <span
-          className={`block text-center text-[10px] leading-tight opacity-80 ${c.text}`}
+          className={`block w-full truncate text-center text-[10px] leading-tight opacity-80 ${c.text}`}
         >
           {sg.playerNames.join(" · ")}
         </span>
       </div>
       {/* 2 caras derecha */}
-      <div className="flex shrink-0 gap-1.5">
+      <div className="flex shrink-0 gap-1">
         {(sg.imageUrls ?? []).slice(2, 4).map((url, i) => (
           <div
             key={i}
-            className="h-12 w-12 overflow-hidden rounded-lg bg-white/20"
+            className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-white/20"
           >
             <img
               src={url ?? undefined}
@@ -144,6 +144,7 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
   const [feedback, setFeedback] = useState<{ kind: "ok" | "miss"; text: string } | null>(null);
   const [oneAway, setOneAway] = useState(false);
   const [justRevealed, setJustRevealed] = useState<number | null>(null);
+  const [surrendered, setSurrendered] = useState(false);
 
   const gs = useGameStats("conexiones", todayKey());
 
@@ -179,7 +180,7 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
   );
 
   const toggle = (idx: number) => {
-    if (isGameOver || isWin) return;
+    if (finished) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(idx)) next.delete(idx);
@@ -189,7 +190,7 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
   };
 
   const send = () => {
-    if (selected.size !== 4 || !puzzle) return;
+    if (selected.size !== 4 || !puzzle || finished) return;
     const indices = [...selected];
     const groupIds = indices.map((i) => remainingCells[i].groupIndex);
     const allSame = groupIds.every((id) => id === groupIds[0]);
@@ -228,15 +229,17 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
 
   const isGameOver = mistakes >= (maxMistakes ?? Infinity);
   const isWin = solved.size === 4;
+  const finished = isGameOver || isWin || surrendered;
+  const wonGame = isWin && !surrendered;
 
   const prevEnd = useRef(false);
   useEffect(() => {
     if (!puzzle) return;
-    if ((isGameOver || isWin) && !prevEnd.current) {
-      gs.registerResult(isWin);
+    if (finished && !prevEnd.current) {
+      gs.registerResult(wonGame);
     }
-    prevEnd.current = isGameOver || isWin;
-  }, [isGameOver, isWin, puzzle, gs.registerResult]);
+    prevEnd.current = finished;
+  }, [finished, wonGame, puzzle, gs.registerResult]);
 
   const allGroups: SolvedGroup[] = useMemo(() => {
     if (!puzzle) return [];
@@ -248,6 +251,19 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
       imageUrls: g.image_urls,
     }));
   }, [puzzle]);
+
+  /** Rendirse: revela todo, marca derrota y termina (necesario en Fácil, sin límite de errores). */
+  const handleSurrender = useCallback(() => {
+    if (finished) return;
+    setSurrendered(true);
+    setSolved((prev) => {
+      const next = new Map(prev);
+      for (const g of allGroups) next.set(g.groupIndex, g);
+      return next;
+    });
+    setSelected(new Set());
+    setFeedback(null);
+  }, [finished, allGroups]);
 
   if (!puzzle && !error) {
     return <p className="py-16 text-center text-white/40">Cargando puzzle…</p>;
@@ -266,7 +282,7 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
   );
 
   /* ── game over: solo mostrar las 4 conexiones ─── */
-  if (isGameOver || isWin) {
+  if (finished) {
     return (
       <>
         <GameHeader
@@ -280,14 +296,16 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
           <span
             className={[
               "rounded-lg px-3 py-1 text-sm font-bold",
-              isWin
+              wonGame
                 ? "bg-emerald-500/15 text-emerald-300"
                 : "bg-red-500/15 text-red-300",
             ].join(" ")}
           >
-            {isWin
+            {wonGame
               ? "¡Desarmaste todos los grupos!"
-              : "Se acabaron los errores."}
+              : surrendered
+                ? "Te rendiste. Estas eran las conexiones."
+                : "Se acabaron los errores."}
           </span>
         </div>
 
@@ -415,6 +433,13 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
           ].join(" ")}
         >
           Enviar
+        </button>
+        <button
+          onClick={handleSurrender}
+          className="w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-300/80 transition hover:bg-red-500/20"
+          title="Abandonar y ver las conexiones"
+        >
+          Rendirse
         </button>
       </main>
 

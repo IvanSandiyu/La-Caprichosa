@@ -75,18 +75,21 @@ export interface StatsData {
 
 export function StatsPanel({ stats }: { stats: StatsData }) {
   const pct = stats.played ? Math.round((stats.wins / stats.played) * 100) : 0;
+  const losses = stats.played - stats.wins;
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {[
           { label: "Racha actual", value: stats.streak },
           { label: "Mejor racha", value: stats.best },
-          { label: "Partidos jugados", value: stats.played },
-          { label: "% completadas", value: `${pct}%` },
+          { label: "Partidos", value: stats.played },
+          { label: "Ganadas", value: stats.wins },
+          { label: "Perdidas", value: losses },
+          { label: "% Ganadas", value: `${pct}%` },
         ].map(({ label, value }) => (
-          <div key={label} className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-center">
-            <div className="text-2xl font-black text-sky-300">{value}</div>
-            <div className="mt-1 text-xs text-white/60">{label}</div>
+          <div key={label} className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-center">
+            <div className="text-xl font-black text-sky-300">{value}</div>
+            <div className="mt-1 text-[10px] text-white/60">{label}</div>
           </div>
         ))}
       </div>

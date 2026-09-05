@@ -96,6 +96,8 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   // ids confirmados correctos en modo uno-a-uno
   const [locked, setLocked] = useState<Set<number>>(new Set());
+  // jugador elegido en modo uno-a-uno (pendiente de confirmar con "Check")
+  const [candidate, setCandidate] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [won, setWon] = useState(false);
   const [justLost, setJustLost] = useState(false);
@@ -148,33 +150,40 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
     }
   }, [puzzle, gameOver, selected, difficulty, mode, gs.registerResult]);
 
-  // modo uno-a-uno: tocar un jugador
-  const pickOne = useCallback(
+  // modo uno-a-uno: elegir un jugador y confirmarlo con "Check"
+  const selectCandidate = useCallback(
     (id: number) => {
       if (!puzzle || gameOver || locked.has(id)) return;
-      const p = puzzle.players.find((x) => x.id === id);
-      if (!p) return;
-      if (!p.is_impostor) {
-        const next = new Set(locked);
-        next.add(id);
-        setLocked(next);
-        const allCorrect = puzzle.players.filter((x) => !x.is_impostor).every((x) => next.has(x.id));
-        if (allCorrect) {
-          setWon(true);
-          setGameOver(true);
-          gs.registerResult(true);
-          saveResult(difficulty, mode, true);
-        }
-      } else {
-        setWon(false);
-        setGameOver(true);
-        setJustLost(true);
-        gs.registerResult(false);
-        saveResult(difficulty, mode, false);
-      }
+      setCandidate((prev) => (prev === id ? null : id));
     },
-    [puzzle, gameOver, locked, difficulty, mode, gs.registerResult],
+    [puzzle, gameOver, locked],
   );
+
+  const verifyCandidate = useCallback(() => {
+    if (!puzzle || gameOver || candidate === null) return;
+    const p = puzzle.players.find((x) => x.id === candidate);
+    if (!p) return;
+    const correctIds = puzzle.players.filter((x) => !x.is_impostor).map((x) => x.id);
+    if (!p.is_impostor) {
+      const next = new Set(locked);
+      next.add(p.id);
+      setLocked(next);
+      setCandidate(null);
+      const allCorrect = correctIds.every((id) => next.has(id));
+      if (allCorrect) {
+        setWon(true);
+        setGameOver(true);
+        gs.registerResult(true);
+        saveResult(difficulty, mode, true);
+      }
+    } else {
+      setWon(false);
+      setGameOver(true);
+      setJustLost(true);
+      gs.registerResult(false);
+      saveResult(difficulty, mode, false);
+    }
+  }, [puzzle, gameOver, candidate, locked, difficulty, mode, gs.registerResult]);
 
   if (error) {
     return (
@@ -206,19 +215,22 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
     }
     // uno a uno
     if (locked.has(p.id)) return "locked";
+    if (p.id === candidate) return "candidate";
     return "idle";
   };
 
   const handleClick = (id: number) => {
     if (gameOver) return;
     if (mode === "normal") toggle(id);
-    else pickOne(id);
+    else selectCandidate(id);
   };
 
   const ringColor = (state: string) => {
     switch (state) {
       case "selected":
         return "border-sky-400 ring-2 ring-sky-400/70";
+      case "candidate":
+        return "border-amber-400 ring-2 ring-amber-400/80";
       case "locked":
         return "border-emerald-400/80";
       case "correct":
@@ -256,6 +268,11 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
             Seleccioná a todos los que cumplen la categoría (x{correctIds.size})
           </p>
         )}
+        {mode === "uno-a-uno" && (
+          <p className="mt-1 text-[11px] text-white/50">
+            Tocá un rostro y confirmá con <span className="font-bold text-amber-300">Check</span>. Si elegís al impostor, perdés.
+          </p>
+        )}
       </div>
 
       {/* tablero */}
@@ -269,6 +286,8 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
             label = "✓";
           } else if (mode === "uno-a-uno" && locked.has(p.id)) {
             label = "✓";
+          } else if (mode === "uno-a-uno" && p.id === candidate) {
+            label = "?";
           }
           return (
             <button
@@ -309,7 +328,7 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
         </div>
       )}
 
-      {/* acción modo normal */}
+      {/* acción */}
       {mode === "normal" && !gameOver && (
         <button
           onClick={submitNormal}
@@ -318,6 +337,18 @@ export function ImpostorGame({ difficulty, mode, onExit }: Props) {
         >
           Confirmar selección
         </button>
+      )}
+
+      {mode === "uno-a-uno" && candidate !== null && !gameOver && (
+        <div className="flex w-full max-w-md flex-col items-center gap-1">
+          <button
+            onClick={verifyCandidate}
+            className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-black uppercase tracking-wide text-slate-950 transition hover:bg-sky-400"
+          >
+            Check
+          </button>
+          <p className="text-[11px] text-white/40">¿Este jugador cumple la categoría?</p>
+        </div>
       )}
 
       {gameOver && (

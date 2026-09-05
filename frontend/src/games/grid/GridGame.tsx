@@ -38,6 +38,9 @@ export function GridGame({ timeMode, onExit }: Props) {
 
   const prevFinished = useRef(false);
 
+  // tras rendirse/eliminarse, el botón "Ver estadísticas" muestra las Stats del juego
+  const viewStats = () => setModal("stats");
+
   const {
     placements,
     filledCount,
@@ -277,7 +280,7 @@ export function GridGame({ timeMode, onExit }: Props) {
                 )}
                 {revealed && (
                   <button
-                    onClick={() => setModal("result")}
+                    onClick={viewStats}
                     className="rounded-xl bg-sky-500 px-5 py-2 text-sm font-bold text-slate-950 transition hover:bg-sky-400"
                   >
                     Ver estadísticas
@@ -297,7 +300,7 @@ export function GridGame({ timeMode, onExit }: Props) {
             {finished && won && (
               <div className="mt-1 flex items-center gap-3">
                 <button
-                  onClick={() => setModal("stats")}
+                  onClick={viewStats}
                   className="rounded-xl bg-sky-500 px-5 py-2 text-sm font-bold text-slate-950 transition hover:bg-sky-400"
                 >
                   Ver estadísticas

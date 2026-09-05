@@ -259,22 +259,22 @@ export function LinkGame({ difficulty, onExit }: Props) {
       </div>
 
       {/* mystery player */}
-      <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-white/15 bg-white/[0.04]">
+      <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.04]">
         {gameOver && puzzle ? (
           <>
             {puzzle.mystery_player.image_url ? (
               <img src={puzzle.mystery_player.image_url} alt={puzzle.mystery_player.name} className="h-full w-full object-cover" />
             ) : (
-              <Silhouette className="h-10 w-10 text-white/15" />
+              <Silhouette className="h-16 w-16 text-white/15" />
             )}
             <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1 pb-0.5 pt-2">
-              <span className="block text-center text-[8px] font-bold text-white">{puzzle.mystery_player.name}</span>
+              <span className="block text-center text-[9px] font-bold text-white">{puzzle.mystery_player.name}</span>
             </span>
           </>
         ) : (
           <>
-            <Silhouette className="h-10 w-10 text-white/15" />
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[10px] font-black text-white">?</span>
+            <Silhouette className="h-16 w-16 text-white/15" />
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-sky-500 text-[11px] font-black text-white">?</span>
           </>
         )}
       </div>

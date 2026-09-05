@@ -174,7 +174,15 @@ def reveal_solution(conn: sqlite3.Connection, grid: Grid) -> list[dict]:
     for i, row_label in enumerate(grid.rows):
         for j, col_label in enumerate(grid.cols):
             pool = _pool_for(conn, row_label) & _pool_for(conn, col_label)
-            pid = next(iter(pool)) if pool else None
+            pid = None
+            if pool:
+                row = conn.execute(
+                    "SELECT player_id FROM players WHERE player_id IN ({}) ORDER BY name LIMIT 1".format(
+                        ",".join("?" for _ in pool)
+                    ),
+                    tuple(pool),
+                ).fetchone()
+                pid = row[0] if row else None
             if pid is None:
                 results.append({"row": i, "col": j, "player_id": 0, "name": "—", "image_url": None})
                 continue
