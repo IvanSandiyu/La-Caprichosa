@@ -69,6 +69,7 @@ export interface StatsData {
   best: number;
   played: number;
   wins: number;
+  lastDate: string | null;
   history?: Array<{ date: string; won: boolean }>;
 }
 
