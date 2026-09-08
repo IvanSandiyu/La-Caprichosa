@@ -77,13 +77,15 @@ def _clubmates(
     player_id: int,
     cur_year: int,
     gap: int,
+    rng: random.Random,
 ) -> list[dict]:
-    """Find players who share a club AND whose careers overlap.
+    """Candidatos que compartieron club y cuyas carreras se superponen.
 
-    We estimate each player's active years as [dob+18, dob+37]. Two players
-    overlap if their ranges intersect. Players whose career era cannot be
-    reliably determined (missing or placeholder DOB) are EXCLUDED, because we
-    can't guarantee they coincided with the mystery player.
+    Se ordenan por "riqueza de carrera": primero los que jugaron en 3+ clubes,
+    después 2, y por último los de un solo club (típicamente el plantel actual).
+    Así los compañeros mostrados no delatan el club único del misterioso: se
+    priorizan jugadores que pasaron por ESE club Y por otros también, y dentro
+    de cada grupo el orden es aleatorio (pero determinista por fecha).
     """
     m_range = _career_range(conn, player_id)
     if m_range is None:
@@ -109,7 +111,7 @@ def _clubmates(
         (player_id, *EXCLUDED_CLUBS, *window_params),
     ).fetchall()
 
-    result = []
+    candidates: dict[int, dict] = {}
     for r in rows:
         p_range = _career_range(conn, r[0])
         if p_range is None:
@@ -117,8 +119,41 @@ def _clubmates(
         p_start, p_end = p_range
         if p_end < m_start or m_end < p_start:
             continue  # no overlap → skip
-        result.append({"id": r[0], "name": r[1], "image_url": r[2], "club": r[3]})
+        cand = candidates.setdefault(
+            r[0], {"id": r[0], "name": r[1], "image_url": r[2], "shared": []}
+        )
+        cand["shared"].append(r[3])
 
+    # cantidad de clubes de cada candidato (para priorizar carreras ricas)
+    ids = list(candidates)
+    counts: dict[int, int] = {}
+    for i in range(0, len(ids), 400):
+        chunk = ids[i : i + 400]
+        ph = ",".join("?" * len(chunk))
+        for pid, n in conn.execute(
+            f"SELECT player_id, COUNT(DISTINCT club_id) FROM player_clubs "
+            f"WHERE player_id IN ({ph}) GROUP BY player_id",
+            chunk,
+        ):
+            counts[pid] = n
+
+    tier_a = [c for c in candidates.values() if counts.get(c["id"], 0) >= 3]
+    tier_b = [c for c in candidates.values() if counts.get(c["id"], 0) == 2]
+    tier_c = [c for c in candidates.values() if counts.get(c["id"], 0) <= 1]
+    for tier in (tier_a, tier_b, tier_c):
+        rng.shuffle(tier)
+
+    result = []
+    for cand in tier_a + tier_b + tier_c:
+        result.append(
+            {
+                "id": cand["id"],
+                "name": cand["name"],
+                "image_url": cand["image_url"],
+                "club": cand["shared"][0],
+                "n_clubs": counts.get(cand["id"], 0),
+            }
+        )
     return result
 
 
@@ -156,7 +191,8 @@ def _mystery_candidates(
     window_sql, window_params = _debut_window_sql("p", cur_year, gap)
     rows = conn.execute(
         f"""
-        SELECT p.player_id, p.name, p.image_url, COUNT(DISTINCT pc2.player_id) AS n
+        SELECT p.player_id, p.name, p.image_url, COUNT(DISTINCT pc2.player_id) AS n,
+               COUNT(DISTINCT pc1.club_id) AS n_clubs
         FROM players p
         JOIN player_clubs pc1 ON pc1.player_id = p.player_id
         JOIN player_clubs pc2 ON pc1.club_id = pc2.club_id AND pc2.player_id != p.player_id
@@ -177,7 +213,7 @@ def _mystery_candidates(
         """,
         (*EXCLUDED_CLUBS, *window_params, min_clubmates),
     ).fetchall()
-    return [{"id": r[0], "name": r[1], "image_url": r[2], "n": r[3]} for r in rows]
+    return [{"id": r[0], "name": r[1], "image_url": r[2], "n": r[3], "n_clubs": r[4]} for r in rows]
 
 
 def _generate(
@@ -192,10 +228,13 @@ def _generate(
     if not candidates:
         return None
 
+    # primero los misteriosos con carrera más rica (más clubes): son menos
+    # fáciles de delatar por el plantel actual, y generan compañeros más variados
+    candidates.sort(key=lambda c: c["n_clubs"], reverse=True)
     rng.shuffle(candidates)
 
     for mystery in candidates:
-        clubmates = _clubmates(conn, mystery["id"], cur_year, gap)
+        clubmates = _clubmates(conn, mystery["id"], cur_year, gap, rng)
         if len(clubmates) < TEAMMATES_COUNT:
             continue
 
@@ -209,22 +248,41 @@ def _generate(
         if len(unique) < TEAMMATES_COUNT:
             continue
 
-        # prefer teammates from different clubs
-        rng.shuffle(unique)
+        # separamos por riqueza de carrera: multi-club primero (no delatan el
+        # club único del misterioso), de un solo club como relleno
+        multi = [cm for cm in unique if cm["n_clubs"] >= 2]
+        single = [cm for cm in unique if cm["n_clubs"] < 2]
+        rng.shuffle(multi)
+        rng.shuffle(single)
+
         chosen: list[dict] = []
         used_clubs: set[str] = set()
-        for cm in unique:
+        # pasada 1: compañeros multi-club, uno por club compartido (evita que
+        # los 5 digan "Belgrano")
+        for cm in multi:
             if len(chosen) >= TEAMMATES_COUNT:
                 break
             if cm["club"] not in used_clubs:
                 chosen.append(cm)
                 used_clubs.add(cm["club"])
-        # fill remaining if not enough unique clubs
-        for cm in unique:
+        # pasada 2: si faltan, rellenar con un solo club (distintos clubes)
+        for cm in single:
+            if len(chosen) >= TEAMMATES_COUNT:
+                break
+            if cm["club"] not in used_clubs:
+                chosen.append(cm)
+                used_clubs.add(cm["club"])
+        # pasada 3: completar con el resto (misma club repetido si es necesario)
+        for cm in multi + single:
             if len(chosen) >= TEAMMATES_COUNT:
                 break
             if cm not in chosen:
                 chosen.append(cm)
+
+        # exigimos mayoría multi-club salvo que el pool del día no tenga más
+        multi_picked = sum(1 for cm in chosen if cm["n_clubs"] >= 2)
+        if multi_picked < 3 and any(c not in chosen for c in multi):
+            continue  # habían multi-club sin usar: probar otro misterioso
 
         return LinkPuzzle(
             game_date=game_date,

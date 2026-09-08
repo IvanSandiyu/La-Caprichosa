@@ -550,7 +550,13 @@ def main():
                     help="Límite de páginas de jugador a scrapear.")
     ap.add_argument("--players-only", action="store_true",
                     help="Solo scrapear planteles (saltar páginas de jugador).")
+    ap.add_argument("--fresh", action="store_true",
+                    help="Borrar la caché de perfiles y descargarlos de nuevo.")
     args = ap.parse_args()
+
+    if args.fresh and CACHE_PATH.exists():
+        CACHE_PATH.unlink()
+        print("Caché de perfiles eliminada (--fresh): se vuelve a scrapear todo.")
 
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
@@ -667,16 +673,24 @@ def main():
             CACHE_PATH.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
             profile_fetched += 1
             time.sleep(0.25)
-        # insertar carrera
+        # insertar carrera (upsert: refresca valores si la ficha ya existía)
         for sec in card.get("sections", []):
             sec_name = sec["section"]
             for row in sec["rows"]:
                 club_id_row = resolve_club_by_name(conn, row["club"])
                 conn.execute(
-                    """INSERT OR IGNORE INTO player_career
+                    """INSERT INTO player_career
                        (player_id, section, club_id, club_name, country, years,
                         year_from, year_to, is_current, pj, goals)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                       ON CONFLICT(player_id, section, club_id, years) DO UPDATE SET
+                         club_name = excluded.club_name,
+                         country = excluded.country,
+                         year_from = excluded.year_from,
+                         year_to = excluded.year_to,
+                         is_current = excluded.is_current,
+                         pj = excluded.pj,
+                         goals = excluded.goals""",
                     (
                         pid,
                         sec_name,
