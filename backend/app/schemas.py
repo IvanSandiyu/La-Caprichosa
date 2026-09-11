@@ -1,6 +1,9 @@
-from datetime import date
+from __future__ import annotations
 
-from pydantic import BaseModel
+from datetime import date
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 
 class GridLabel(BaseModel):
@@ -32,3 +35,11 @@ class SearchHit(BaseModel):
     dob: str | None = None
     citizenship: str | None = None
     image_url: str | None = None
+
+
+class FeedbackRequest(BaseModel):
+    issue: Literal["clubes_incompletos", "jugador_faltante"]
+    player_id: int | None = None
+    player_name: str = Field(..., min_length=1, max_length=200)
+    game: str | None = None
+    message: str = Field(default="", max_length=2000)

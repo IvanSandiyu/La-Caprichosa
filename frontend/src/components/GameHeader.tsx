@@ -2,12 +2,16 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { Modal, StatsPanel } from "./Modals";
 import type { StatsData } from "./Modals";
+import { FeedbackControl } from "./FeedbackControl";
+import type { FeedbackPlayer } from "./FeedbackControl";
 
 interface Props {
   gameId: string;
   subtitle?: string;
   onExit?: () => void;
   stats: StatsData;
+  /** Jugadores ya visibles en la partida para reportar rápido. */
+  players?: FeedbackPlayer[];
 }
 
 const HOW_TO: Record<string, ReactNode> = {
@@ -102,9 +106,27 @@ const HOW_TO: Record<string, ReactNode> = {
       </ul>
     </>
   ),
+  top10: (
+    <>
+      <p>
+        Cada día un <b>Top 10</b> con la consigna de un club: más partidos o más
+        goles en su historia, en Primera División, en Copa Argentina…
+      </p>
+      <ul className="list-disc space-y-1 pl-5">
+        <li>
+          Escribí el <b>apellido</b> de un futbolista del ranking: si está,
+          aparece animado en su posición exacta.
+        </li>
+        <li>
+          La <b>bandera</b> de cada fila es una pista de la nacionalidad.
+        </li>
+        <li>Completá los 10 para ganar el día.</li>
+      </ul>
+    </>
+  ),
 };
 
-export function GameHeader({ gameId, subtitle, onExit, stats }: Props) {
+export function GameHeader({ gameId, subtitle, onExit, stats, players }: Props) {
   const [modal, setModal] = useState<"howto" | "stats" | null>(null);
 
   return (
@@ -146,6 +168,7 @@ export function GameHeader({ gameId, subtitle, onExit, stats }: Props) {
           >
             Stats
           </button>
+          <FeedbackControl game={gameId} players={players} />
         </div>
       </header>
 

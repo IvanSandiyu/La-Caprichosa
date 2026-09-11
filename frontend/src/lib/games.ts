@@ -61,6 +61,17 @@ export const GAMES: GameMeta[] = [
       "posición, debut y clubes. Adiviná quién es antes de agotar tus 5 intentos. " +
       "En modo Difícil las pistas de Club y Nacionalidad quedan bloqueadas.",
   },
+{
+    id: "top10",
+    name: "Fútbol Top 10",
+    tagline: "El ranking de los récords de cada club",
+    description:
+      "Cada día una consigna: los 10 jugadores con más partidos o más goles " +
+      "en la historia de un club, en Primera División, en Copa Argentina y más. " +
+      "Escribí el apellido de un futbolista: si está en el ranking, aparece " +
+      "animado en su posición exacta. La bandera de cada jugador te da una pista. " +
+      "¿Podés completar el top 10 completo?",
+  },
 ];
 
 export function getGame(id: string): GameMeta | undefined {

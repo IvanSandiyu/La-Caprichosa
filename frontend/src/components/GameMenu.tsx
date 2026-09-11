@@ -5,6 +5,7 @@ import { ConexionesThumbnail } from "./ConexionesThumbnail";
 import { LinkThumbnail } from "./LinkThumbnail";
 import { ImpostorThumbnail } from "./ImpostorThumbnail";
 import { StatdleThumbnail } from "./StatdleThumbnail";
+import { Top10Thumbnail } from "./Top10Thumbnail";
 
 interface Props {
   onSelect: (gameId: string) => void;
@@ -64,6 +65,8 @@ function GameCard({
           <ImpostorThumbnail />
         ) : game.id === "statdle" ? (
           <StatdleThumbnail />
+        ) : game.id === "top10" ? (
+          <Top10Thumbnail />
         ) : (
           <GameThumbnail />
         )}

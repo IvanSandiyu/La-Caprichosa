@@ -72,6 +72,17 @@
         "Sarmiento (Junín)"
       ],
       "image_url": null
+    },
+    {
+      "name": "José Pedro Fuenzalida",
+      "position": "Midfield",
+      "dob": "1985-02-22",
+      "citizenship": "Chile",
+      "last_season": 2022,
+      "clubs": [
+        "Boca Juniors"
+      ],
+      "image_url": null
     }
   ]
 }

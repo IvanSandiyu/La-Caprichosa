@@ -13,6 +13,7 @@ import { ConexionesThumbnail } from "./ConexionesThumbnail";
 import { LinkThumbnail } from "./LinkThumbnail";
 import { ImpostorThumbnail } from "./ImpostorThumbnail";
 import { StatdleThumbnail } from "./StatdleThumbnail";
+import { Top10Thumbnail } from "./Top10Thumbnail";
 
 interface Props {
   game: GameMeta;
@@ -21,15 +22,17 @@ interface Props {
   onStartLink?: (difficulty: Difficulty) => void;
   onStartImpostor?: (difficulty: Difficulty, mode: ImpostorMode) => void;
   onStartStatdle?: (difficulty: Difficulty) => void;
+  onStartTop10?: () => void;
   onBack: () => void;
 }
 
-export function GameDetail({ game, onStartGrid, onStartConexiones, onStartLink, onStartImpostor, onStartStatdle, onBack }: Props) {
+export function GameDetail({ game, onStartGrid, onStartConexiones, onStartLink, onStartImpostor, onStartStatdle, onStartTop10, onBack }: Props) {
   const isGrid = game.id === "grid";
   const isConexiones = game.id === "conexiones";
   const isLink = game.id === "futbol-link";
   const isImpostor = game.id === "impostor";
   const isStatdle = game.id === "statdle";
+  const isTop10 = game.id === "top10";
   const usesDifficulty = isConexiones || isLink || isImpostor || isStatdle;
   const difficultyOptions = isStatdle ? STATDLE_DIFFICULTY_OPTIONS : DIFFICULTY_OPTIONS;
   const [timeMode, setTimeMode] = useState<TimeMode>("normal");
@@ -42,9 +45,10 @@ export function GameDetail({ game, onStartGrid, onStartConexiones, onStartLink, 
     if (isLink && onStartLink) onStartLink(difficulty);
     if (isImpostor && onStartImpostor) onStartImpostor(difficulty, impostorMode);
     if (isStatdle && onStartStatdle) onStartStatdle(difficulty);
+    if (isTop10 && onStartTop10) onStartTop10();
   };
 
-  const thumb = isConexiones ? <ConexionesThumbnail /> : isLink ? <LinkThumbnail /> : isImpostor ? <ImpostorThumbnail /> : isStatdle ? <StatdleThumbnail /> : <GameThumbnail />;
+  const thumb = isConexiones ? <ConexionesThumbnail /> : isLink ? <LinkThumbnail /> : isImpostor ? <ImpostorThumbnail /> : isStatdle ? <StatdleThumbnail /> : isTop10 ? <Top10Thumbnail /> : <GameThumbnail />;
 
   return (
     <div className="flex w-full flex-1 flex-col">

@@ -9,6 +9,7 @@ import { ConexionesGame } from "./games/conexiones/ConexionesGame";
 import { LinkGame } from "./games/link/LinkGame";
 import { ImpostorGame } from "./games/impostor/ImpostorGame";
 import { StatdleGameUI } from "./games/statdle/StatdleGame";
+import { Top10Game } from "./games/top10/Top10Game";
 
 type View =
   | { name: "menu" }
@@ -17,7 +18,8 @@ type View =
   | { name: "conexiones"; difficulty: Difficulty }
   | { name: "futbol-link"; difficulty: Difficulty }
   | { name: "impostor"; difficulty: Difficulty; mode: ImpostorMode }
-  | { name: "statdle"; difficulty: Difficulty };
+  | { name: "statdle"; difficulty: Difficulty }
+  | { name: "top10" };
 
 export default function App() {
   const [view, setView] = useState<View>({ name: "menu" });
@@ -44,6 +46,7 @@ export default function App() {
             onStartStatdle={(difficulty) =>
               setView({ name: "statdle", difficulty })
             }
+            onStartTop10={() => setView({ name: "top10" })}
             onBack={() => setView({ name: "menu" })}
           />
         </div>
@@ -103,6 +106,14 @@ export default function App() {
           difficulty={view.difficulty}
           onExit={() => setView({ name: "menu" })}
         />
+      </div>
+    );
+  }
+
+  if (view.name === "top10") {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center px-4 pb-10">
+        <Top10Game onExit={() => setView({ name: "menu" })} />
       </div>
     );
   }

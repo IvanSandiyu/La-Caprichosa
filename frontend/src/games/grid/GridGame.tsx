@@ -4,9 +4,11 @@ import type { TimeMode } from "../../lib/games";
 import { api } from "../../lib/api";
 import { prettyDate } from "../../lib/format";
 import { useGame } from "../../hooks/useGame";
+import type { Placement } from "../../hooks/useGame";
 import { Board } from "../../components/Board";
 import { GuessBox } from "../../components/GuessBox";
 import { GameFooter } from "../../components/GameFooter";
+import { FeedbackControl } from "../../components/FeedbackControl";
 import {
   HowToPlay,
   ResultModal,
@@ -119,6 +121,10 @@ export function GridGame({ timeMode, onExit }: Props) {
     timeLimit !== null ? Math.max(0, timeLimit - secondsUsed) : secondsUsed;
   const urgent = timeLimit !== null && clock <= 10;
 
+  const gridPlayers = placements
+    .filter((p): p is Placement => p !== null)
+    .map((p) => ({ id: p.playerId, name: p.name }));
+
   return (
     <>
       {/* flash rojo al perder — estilo eliminación */}
@@ -169,6 +175,11 @@ export function GridGame({ timeMode, onExit }: Props) {
           >
             Stats
           </button>
+          <FeedbackControl
+            game="grid"
+            players={gridPlayers}
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/5"
+          />
         </div>
       </header>
 

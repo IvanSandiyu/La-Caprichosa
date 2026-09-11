@@ -290,6 +290,7 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
           subtitle={`Conexiones · ${prettyDate(puzzle.date)}`}
           onExit={onExit}
           stats={gs.stats}
+          players={cells.map((c) => ({ id: c.playerId, name: c.name }))}
         />
 
         <div className="mb-3 flex flex-wrap items-center justify-center gap-3">
@@ -332,6 +333,7 @@ export function ConexionesGame({ difficulty, onExit }: Props) {
         subtitle={`Conexiones · ${prettyDate(puzzle.date)}`}
         onExit={onExit}
         stats={gs.stats}
+        players={cells.map((c) => ({ id: c.playerId, name: c.name }))}
       />
 
       <div className="mb-3 flex flex-wrap items-center justify-center gap-3">

@@ -6,14 +6,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
+from . import feedback_store
 from . import grid as grid_mod
 from . import impostor as impostor_mod
 from . import link as link_mod
 from . import puzzles as puzzles_mod
 from . import statdle as statdle_mod
+from . import top10 as top10_mod
 from .config import GAME_NAME
 from .db import get_conn
-from .schemas import CellInfo, GuessRequest, GuessResponse, GridLabel, SearchHit
+from .schemas import CellInfo, FeedbackRequest, GuessRequest, GuessResponse, GridLabel, SearchHit
 
 app = FastAPI(title=GAME_NAME)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -39,6 +41,7 @@ _puzzle_cache: dict[str, puzzles_mod.Puzzle] = {}
 _link_cache: dict[str, link_mod.LinkPuzzle] = {}
 _impostor_cache: dict[str, impostor_mod.ImpostorPuzzle] = {}
 _statdle_cache: dict[str, statdle_mod.StatdlePuzzle] = {}
+_top10_cache: dict[str, top10_mod.Top10Puzzle] = {}
 
 
 def get_grid(game_date: date) -> grid_mod.Grid:
@@ -238,3 +241,59 @@ def impostor_today(difficulty: str = "normal"):
             for pl in p.players
         ],
     }
+
+
+@app.get("/api/top10/index")
+def top10_index():
+    """Índice de nombres para el autocompletar del Top 10 (BD + histórico BDFA)."""
+    return top10_mod.build_suggestion_index(get_conn())
+
+
+@app.get("/api/top10/today")
+def top10_today():
+    """Devuelve el puzzle Top 10 del día (consigna + ranking de jugadores)."""
+    key = date.today().isoformat()
+    if key not in _top10_cache:
+        _top10_cache.clear()
+        p = top10_mod.generate_top10(date.today())
+        if p is None:
+            raise HTTPException(status_code=500, detail="No se pudo generar puzzle top10")
+        _top10_cache[key] = p
+    p = _top10_cache[key]
+    return {
+        "date": p.game_date.isoformat(),
+        "methodology": p.methodology,
+        "club": p.club,
+        "answers": p.answers,
+    }
+
+
+@app.post("/api/feedback")
+def add_feedback(req: FeedbackRequest):
+    """Registra un reporte del usuario (clubes incompletos / jugador faltante).
+
+    Los datos no se aplican automáticamente: quedan guardados en
+    players_feedback para revisarlos y actualizar el perfil del jugador a mano.
+    """
+    feedback_store.ensure_feedback_table()
+    try:
+        fid = feedback_store.add_feedback(
+            req.issue,
+            req.player_id,
+            req.player_name.strip(),
+            req.game,
+            req.message.strip(),
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    return {"ok": True, "id": fid}
+
+
+@app.get("/api/feedback")
+def feedback_rows(limit: int = 500):
+    """Todos los reportes (para revisarlos y actualizar los perfiles)."""
+    feedback_store.ensure_feedback_table()
+    try:
+        return feedback_store.list_feedback(limit)
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))

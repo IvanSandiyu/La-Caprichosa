@@ -24,8 +24,23 @@ const FLAGS: Record<string, string> = {
   venezuela: "🇻🇪",
   espana: "🇪🇸",
   italia: "🇮🇹",
+  francia: "🇫🇷",
+  france: "🇫🇷",
+  alemania: "🇩🇪",
+  germany: "🇩🇪",
+  inglaterra: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+  holanda: "🇳🇱",
+  "paises bajos": "🇳🇱",
+  portugal: "🇵🇹",
   mexico: "🇲🇽",
   "estados unidos": "🇺🇸",
+  polonia: "🇵🇱",
+  serbia: "🇷🇸",
+  croacia: "🇭🇷",
+  eslovaquia: "🇸🇰",
+  suiza: "🇨🇭",
+  austria: "🇦🇹",
+  hungria: "🇭🇺",
 };
 
 export function normalize(text: string): string {

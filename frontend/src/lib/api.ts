@@ -124,6 +124,55 @@ export interface ImpostorPuzzleData {
   players: ImpostorPlayer[];
 }
 
+/* ── Top 10 ──────────────────────────────────────────── */
+
+export interface Top10Methodology {
+  id: string;
+  category: string;
+  metric: string;
+  clue: string;
+}
+
+export interface Top10Club {
+  id: number;
+  name: string;
+}
+
+export interface Top10Answer {
+  name: string;
+  country: string;
+  value: number;
+}
+
+export interface Top10Data {
+  date: string;
+  methodology: Top10Methodology;
+  club: Top10Club;
+  answers: Top10Answer[];
+}
+
+export interface Top10IndexEntry {
+  name: string;
+  country: string;
+}
+
+/* ── Feedback ───────────────────────────────────────────── */
+
+export type FeedbackIssue = "clubes_incompletos" | "jugador_faltante";
+
+export interface FeedbackPayload {
+  issue: FeedbackIssue;
+  player_id?: number | null;
+  player_name: string;
+  game?: string | null;
+  message: string;
+}
+
+export interface FeedbackResponse {
+  ok: boolean;
+  id: number;
+}
+
 /** URL base del backend. En dev queda vacío → usa el proxy local /api de Vite.
  *  En producción se setea VITE_API_URL a la URL del backend hosteado. */
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
@@ -165,4 +214,17 @@ export const api = {
 
   getStatdle: (difficulty: string) =>
     fetch(url(`statdle/today?difficulty=${difficulty}`)).then((r) => toJson<StatdlePuzzleData>(r)),
+
+  getTop10: () =>
+    fetch(url("top10/today")).then((r) => toJson<Top10Data>(r)),
+
+  getTop10Index: () =>
+    fetch(url("top10/index")).then((r) => toJson<Top10IndexEntry[]>(r)),
+
+  postFeedback: (payload: FeedbackPayload) =>
+    fetch(url("feedback"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then((r) => toJson<FeedbackResponse>(r)),
 };
