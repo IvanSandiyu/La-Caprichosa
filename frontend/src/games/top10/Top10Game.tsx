@@ -458,12 +458,18 @@ export function Top10Game({ onExit }: Props) {
         <div
           className={[
             "w-full max-w-md rounded-2xl px-4 py-3 text-center font-black",
-            solved
-              ? "animate-pop bg-emerald-500/20 text-emerald-300"
-              : "bg-white/5 text-white/60",
+            surrendered
+              ? "animate-pop bg-red-500/15 text-red-300"
+              : solved
+                ? "animate-pop bg-emerald-500/20 text-emerald-300"
+                : "bg-white/5 text-white/60",
           ].join(" ")}
         >
-          {solved ? "¡Completaste el Top 10 del día!" : "Top 10 del día ya jugado"}
+          {surrendered
+            ? "Te rendiste. Estas eran las respuestas del Top 10."
+            : solved
+              ? "¡Completaste el Top 10 del día!"
+              : "Top 10 del día ya jugado"}
         </div>
       )}
 
