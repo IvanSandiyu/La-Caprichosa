@@ -1,0 +1,13 @@
+[
+ {
+  "player_id": -100910,
+  "name": "Juan Román Riquelme",
+  "club_fixes": [
+   {
+    "club_id": 1030,
+    "name": "Argentinos Juniors"
+   }
+  ],
+  "reason": "feedback 22/9: jugó en Argentinos Juniors y en la selección"
+ }
+]

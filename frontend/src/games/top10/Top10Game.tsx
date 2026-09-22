@@ -135,6 +135,8 @@ export function Top10Game({ onExit }: Props) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const [shake, setShake] = useState(false);
+  const [surrendered, setSurrendered] = useState(false);
+  const surrenderedRef = useRef(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
   const gs = useGameStats("top10", todayKey());
@@ -213,10 +215,24 @@ export function Top10Game({ onExit }: Props) {
   useEffect(() => setHighlight(0), [query]);
 
   useEffect(() => {
-    if (!solved || saved?.done) return;
+    if (!solved || surrenderedRef.current || saved?.done) return;
     gs.registerResult(true);
     saveState({ date: puzzle?.date ?? todayKey(), found: [...found], done: true });
-  }, [solved, saved, puzzle, found, gs.registerResult]);
+  }, [solved, surrenderedRef, saved, puzzle, found, gs.registerResult]);
+
+  const handleSurrender = useCallback(() => {
+    if (!puzzle || done) return;
+    const all = Array.from({ length: puzzle.answers.length }, (_, i) => i);
+    surrenderedRef.current = true;
+    setSurrendered(true);
+    setFound(all);
+    setLastAdded(null);
+    setQuery("");
+    setOpen(false);
+    setOpen(false);
+    gs.registerResult(false);
+    saveState({ date: puzzle.date, found: [...all], done: true });
+  }, [puzzle, done, gs.registerResult]);
 
   const reveal = useCallback(
     (idx: number) => {
@@ -428,6 +444,15 @@ export function Top10Game({ onExit }: Props) {
             Llevás {found.length} de {answerCount}. Escribí cualquier futbolista:
             si está en el ranking se revela.
           </p>
+
+          <button
+            type="button"
+            onClick={handleSurrender}
+            className="mt-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-300/80 transition hover:bg-red-500/20"
+            title="Abandonar y ver las respuestas del día"
+          >
+            Rendirse
+          </button>
         </div>
       ) : (
         <div

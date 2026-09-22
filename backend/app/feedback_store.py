@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
 import urllib.request
+from datetime import datetime
+from pathlib import Path
 
-from .config import TURSO_TOKEN, TURSO_URL
+from .config import DATA_DIR, TURSO_TOKEN, TURSO_URL
 from .db import get_conn
+
+# Respaldo durable: cada reporte también se anexa a un archivo del repo, así
+# quede aunque Turso falle o no esté configurado (por las dudas).
+_FEEDBACK_LOG_PATH: Path = DATA_DIR / "feedback_log.jsonl"
 
 _FEEDBACK_DDL = """
 CREATE TABLE IF NOT EXISTS players_feedback (
@@ -121,6 +128,27 @@ def ensure_feedback_table(remote: bool | None = None) -> None:
         conn.commit()
 
 
+def _append_log(args: list, source: str) -> None:
+    """Anexa el reporte al archivo de respaldo del repo (nunca rompe el request)."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return  # no ensuciar el log con reportes de tests
+    row = {
+        "issue": args[0],
+        "player_id": args[1],
+        "player_name": args[2],
+        "game": args[3],
+        "message": args[4],
+        "created_at": datetime.now().replace(microsecond=0).isoformat(),
+        "store": source,
+    }
+    try:
+        _FEEDBACK_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _FEEDBACK_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
 def add_feedback(
     issue: str,
     player_id: int | None,
@@ -131,6 +159,7 @@ def add_feedback(
 ) -> int:
     remote = _remote() if remote is None else remote
     args = [issue, player_id, player_name, game, message]
+    _append_log(args, "turso" if remote else "local")
     if remote:
         rows = _turso_query(
             "INSERT INTO players_feedback (issue, player_id, player_name, game, message) "

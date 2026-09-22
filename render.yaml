@@ -12,3 +12,10 @@ services:
         value: 3.14.3
       - key: CORS_ORIGINS
         value: "*"
+      # Credenciales de Turso (feedback del sitio). Se cargan una sola vez en
+      # el dashboard de Render (secrets, sync: false), con los mismos valores
+      # de backend/.env de desarrollo.
+      - key: TURSO_URL
+        sync: false
+      - key: TURSO_TOKEN
+        sync: false
