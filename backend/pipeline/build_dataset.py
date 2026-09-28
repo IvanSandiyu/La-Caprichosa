@@ -128,7 +128,15 @@ def merge_enrichment(
     club_names: dict[int, str],
     default_season: int | None = None,
 ) -> int:
-    """Inserta jugadores curados de enrichment.json con IDs sintéticos negativos."""
+    """Inserta jugadores curados de enrichment.json con IDs sinteticos negativos.
+
+    Si el dataset base ya trae un jugador con el mismo nombre normalizado pero
+    con NACIONALIDAD CONTRADICTORIA (p.ej. el base carga a "Pablo Javier Perez"
+    como Bolivia y el curado dice Argentina), el curado gana: se actualiza la
+    nacionalidad/dob/posicion, se conservan los clubes ya cargados y se agregan
+    los que falten. Antes el `continue` dejaba ganar al registro erroneo del
+    base y el jugador curado nunca se aplicaba.
+    """
     if not ENRICHMENT_PATH.exists():
         return 0
     data = json.loads(ENRICHMENT_PATH.read_text(encoding="utf-8"))
@@ -137,11 +145,67 @@ def merge_enrichment(
     by_display = {name: cid for cid, name in club_names.items()}
     by_norm = {normalize(name): cid for cid, name in club_names.items()}
 
+    def clubs_of(entry: dict) -> tuple[list[int], list[str]]:
+        cids, missing = [], []
+        for club in entry.get("clubs", []):
+            cid = by_display.get(club) or by_norm.get(normalize(club))
+            if cid is None:
+                missing.append(club)
+            else:
+                cids.append(cid)
+        return cids, missing
+
     added = 0
     for idx, entry in enumerate(entries):
-        cur.execute("SELECT player_id FROM players WHERE norm = ?", (normalize(entry["name"]),))
-        if cur.fetchone():
+        name_norm = normalize(entry["name"])
+        cur.execute(
+            "SELECT player_id, citizenship FROM players WHERE norm = ?", (name_norm,)
+        )
+        row = cur.fetchone()
+        cids, missing = clubs_of(entry)
+
+        if row:
+            pid, base_cit = row
+            want_cit = entry.get("citizenship")
+            conflict = (
+                want_cit
+                and base_cit
+                and normalize(str(base_cit)) != normalize(str(want_cit))
+            )
+            if not conflict:
+                continue
+            cur.execute(
+                "UPDATE players SET citizenship = ?, dob = COALESCE(?, dob), "
+                "position = COALESCE(?, position), last_season = COALESCE(?, last_season) "
+                "WHERE player_id = ?",
+                (
+                    want_cit,
+                    entry.get("dob"),
+                    entry.get("position"),
+                    entry.get("last_season") or default_season,
+                    pid,
+                ),
+            )
+            cur.execute(
+                "DELETE FROM player_countries WHERE player_id = ? AND norm = ?",
+                (pid, normalize(str(base_cit))),
+            )
+            if want_cit:
+                cur.execute(
+                    "INSERT OR IGNORE INTO player_countries VALUES (?, ?, ?)",
+                    (pid, str(want_cit), normalize(str(want_cit))),
+                )
+            for cid in cids:
+                cur.execute("INSERT OR IGNORE INTO player_clubs VALUES (?, ?)", (pid, cid))
+            if missing:
+                print(f"  [enrichment] {entry['name']}: clubes no encontrados: {missing}")
+            added += 1
+            print(
+                f"  [enrichment] ~{entry['name']} (id {pid}): "
+                f"nacionalidad {base_cit} -> {want_cit}, {len(cids)} clubes"
+            )
             continue
+
         pid = -(idx + 1)
         season = entry.get("last_season") or default_season
         cur.execute(
@@ -149,7 +213,7 @@ def merge_enrichment(
             (
                 pid,
                 entry["name"],
-                normalize(entry["name"]),
+                name_norm,
                 entry.get("position"),
                 entry.get("dob"),
                 entry.get("citizenship"),
@@ -163,17 +227,12 @@ def merge_enrichment(
                 "INSERT OR IGNORE INTO player_countries VALUES (?, ?, ?)",
                 (pid, c, normalize(c)),
             )
-        missing = []
-        for club in entry.get("clubs", []):
-            cid = by_display.get(club) or by_norm.get(normalize(club))
-            if cid is None:
-                missing.append(club)
-                continue
+        for cid in cids:
             cur.execute("INSERT OR IGNORE INTO player_clubs VALUES (?, ?)", (pid, cid))
         if missing:
             print(f"  [enrichment] {entry['name']}: clubes no encontrados: {missing}")
         added += 1
-        print(f"  [enrichment] +{entry['name']} ({len(entry.get('clubs', [])) - len(missing)} clubes)")
+        print(f"  [enrichment] +{entry['name']} ({len(cids)} clubes)")
     return added
 
 
@@ -359,6 +418,28 @@ def build_db(players, transfers, clubs, games, appearances) -> None:
         fill_missing(conn)
     except Exception as exc:
         print(f"  [wikidata] omitido: {exc}")
+
+    # --- pool "Argentina" restringido a la seleccion mayor (>= 1 cap) ---
+    # IMPORTANTE: va DESPUES de todos los inserts (base + enrichment +
+    # historia + curados), si no los jugadores agregados despues (p.ej.
+    # historicos o curados) quedan fuera del pool.
+    try:
+        from pipeline.argentina_senior import restrict_argentina
+
+        stats_arg = restrict_argentina(conn)
+        print(f"  [seleccion] pool Argentina (senior): {stats_arg}")
+    except Exception as exc:
+        print(f"  [seleccion] omitido: {exc}")
+
+    # --- fixes curados de clubes (feedback de usuarios, durable) ---
+    try:
+        from pipeline.club_fixes import apply_club_fixes
+
+        n_fix = apply_club_fixes(conn)
+        print(f"  [club_fixes] entradas aplicadas: {n_fix}")
+    except Exception as exc:
+        print(f"  [club_fixes] omitido: {exc}")
+
     conn.commit()
 
     stats = {

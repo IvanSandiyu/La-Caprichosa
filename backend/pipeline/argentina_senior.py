@@ -139,8 +139,13 @@ def restrict_argentina(conn: sqlite3.Connection) -> dict:
     extra_norm = {normalize(e.get("name_bdd", "")): e for e in extra}
 
     players = conn.execute("SELECT player_id, name, norm FROM players").fetchall()
-    player_norm = {pid: norm for pid, _n, norm in players}
     player_name = {pid: name for pid, name, _n in players}
+    # OJO: la columna `norm` de la BDD usa GUIONES BAJOS ("pablo_javier_perez")
+    # en algunos jugadores, por lo que `_tokens()` no los separa y el match
+    # falla -> senior real (Pablo Perez) quedaba fuera del pool. Se matchea
+    # contra `normalize(name)` (espacios, sin acentos), que es el mismo criterio
+    # que usa el frontend.
+    player_norm = {pid: normalize(name or "") for pid, name, _n in players}
 
     senior_ids: set[int] = set()
     for pid, norm in player_norm.items():
